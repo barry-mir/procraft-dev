@@ -1,68 +1,39 @@
 [
   {
     "track_id": "Track00001",
-    "role": "mastering_engineer",
+    "role": "film_tv_music_supervisor",
     "abstraction_level": "negative_space",
     "hook": "avoid anything that sounds obviously digital",
     "primary_intent": "arrangement_add",
     "primary_tool": "add_track",
-    "target_track": "organ_3",
-    "motivation": "Production motivation: The mix is sounding overly clinical with only the first harmonica as harmonica; adding the second harmonica as the second harmonica will add natural warmth while avoiding anything that sounds obviously digital.",
+    "target_track": "drums",
+    "motivation": "Production motivation: The scene needs a visceral heartbeat that avoids synthetic drum-machine precision \u2014 no obvious digital artifacts, just the natural sway of live percussion to ground the emotional pull of the character's final walk.",
     "tool_calls": [
       {
         "name": "add_track",
         "arguments": {
-          "track_name": "organ_3",
-          "program": 22
+          "track_name": "drums",
+          "program": 11,
+          "gain_db": -3.0
+        }
+      },
+      {
+        "name": "layer_instrument",
+        "arguments": {
+          "track": "guitar_3",
+          "additional_program": 27,
+          "mix_ratio": 0.3
         }
       },
       {
         "name": "apply_fx",
         "arguments": {
-          "track": "mix",
-          "call": {
-            "effect": "am_tanh_distortion",
-            "params": {
-              "distortion": 0.05
-            }
-          }
-        }
-      },
-      {
-        "name": "apply_fx",
-        "arguments": {
-          "track": "mix",
-          "call": {
-            "effect": "am_loudness_normalization",
-            "params": {
-              "lufs": -14.0
-            }
-          }
-        }
-      },
-      {
-        "name": "apply_fx",
-        "arguments": {
-          "track": "mix",
-          "call": {
-            "effect": "am_low_shelf_filter",
-            "params": {
-              "center_freq": 100.0,
-              "gain_db": 2.0,
-              "q": 0.5
-            }
-          }
-        }
-      },
-      {
-        "name": "apply_fx",
-        "arguments": {
-          "track": "mix",
+          "track": "bass",
           "call": {
             "effect": "am_highpass_filter",
             "params": {
-              "cutoff_freq": 30.0,
-              "rolloff": 6.0
+              "cutoff_freq": 80.0,
+              "rolloff": 12.0
             }
           }
         }
@@ -70,11 +41,11 @@
       {
         "name": "apply_fx",
         "arguments": {
-          "track": "mix",
+          "track": "drums",
           "call": {
-            "effect": "npy_stereo_widener",
+            "effect": "sox_overdrive",
             "params": {
-              "width": 1.2
+              "gain_db": 8.0
             }
           }
         }
@@ -82,13 +53,26 @@
       {
         "name": "apply_fx",
         "arguments": {
-          "track": "mix",
+          "track": "strings__continued",
           "call": {
-            "effect": "sox_reverb",
+            "effect": "am_lowpass_filter",
             "params": {
-              "reverberance": 30.0,
-              "high_freq_damping": 70.0,
-              "wet_gain": -8.0
+              "cutoff_freq": 3000.0,
+              "rolloff": 18.0
+            }
+          }
+        }
+      },
+      {
+        "name": "apply_fx",
+        "arguments": {
+          "track": "guitar_2",
+          "call": {
+            "effect": "sox_treble",
+            "params": {
+              "gain_db": 5.0,
+              "frequency": 4000.0,
+              "slope": 0.5
             }
           }
         }
@@ -107,7 +91,7 @@
     "primary_intent": "arrangement_remove",
     "primary_tool": "remove_track",
     "target_track": "strings__continued_2",
-    "motivation": "Production motivation: The choir aahs cluttered the midrange like looking through a screen door at a party\u2014removing them lets the synth strings and lead 2 breathe.",
+    "motivation": "Production motivation: The mix feels like looking through a screen door at a party, where the choir aahs is smearing the clarity of the synth strings and lead.",
     "tool_calls": [
       {
         "name": "remove_track",
@@ -118,12 +102,26 @@
       {
         "name": "apply_fx",
         "arguments": {
-          "track": "synth_pad",
+          "track": "strings__continued_1",
           "call": {
             "effect": "am_highpass_filter",
             "params": {
-              "cutoff_freq": 250.0,
+              "cutoff_freq": 150.0,
               "rolloff": 12.0
+            }
+          }
+        }
+      },
+      {
+        "name": "apply_fx",
+        "arguments": {
+          "track": "synth_pad",
+          "call": {
+            "effect": "am_high_shelf_filter",
+            "params": {
+              "center_freq": 2500.0,
+              "gain_db": 3.0,
+              "q": 0.7
             }
           }
         }
@@ -141,36 +139,13 @@
         }
       },
       {
-        "name": "change_instrument",
-        "arguments": {
-          "track": "piano",
-          "from_program": 7,
-          "to_program": 1
-        }
-      },
-      {
         "name": "apply_fx",
         "arguments": {
           "track": "drums",
           "call": {
-            "effect": "sox_compand",
+            "effect": "am_gain",
             "params": {
-              "attack_time": 0.01,
-              "decay_time": 0.1,
-              "soft_knee_db": 5
-            }
-          }
-        }
-      },
-      {
-        "name": "apply_fx",
-        "arguments": {
-          "track": "drums",
-          "call": {
-            "effect": "sox_reverb",
-            "params": {
-              "reverberance": 40.0,
-              "wet_gain": -6.0
+              "gain_db": 1.5
             }
           }
         }
@@ -180,11 +155,10 @@
         "arguments": {
           "track": "bass",
           "call": {
-            "effect": "am_low_shelf_filter",
+            "effect": "am_lowpass_filter",
             "params": {
-              "center_freq": 120.0,
-              "gain_db": 3.0,
-              "Q": 0.5
+              "cutoff_freq": 800.0,
+              "rolloff": 12.0
             }
           }
         }
@@ -202,25 +176,29 @@
     "hook": "don't let any single moment become 'the hook' \u2014 even texture",
     "primary_intent": "performance_velocity",
     "primary_tool": "change_velocity",
-    "target_track": "piano",
-    "motivation": "Production motivation: The bright acoustic piano sounds like it's playing in a silent room, too clean and flat\u2014don't let it feel like a robot, no crisp notes or anything that sticks out as *the* moment.",
+    "target_track": "guitar_1",
+    "motivation": "Production motivation: The acoustic guitar feels too rigid and wants to be the center of attention\u2014smooth it out so no moment becomes \"the hook\", even in the texture.",
     "tool_calls": [
       {
         "name": "change_velocity",
         "arguments": {
-          "track": "piano",
-          "scale_factor": 0.85
+          "track": "guitar_1",
+          "scale_factor": 0.7
         }
       },
       {
         "name": "apply_fx",
         "arguments": {
-          "track": "piano",
+          "track": "guitar_1",
           "call": {
             "effect": "sox_reverb",
             "params": {
-              "reverberance": 35.0,
-              "wet_gain": -6.0
+              "reverberance": 30.0,
+              "high_freq_damping": 40.0,
+              "room_scale": 50.0,
+              "stereo_depth": 60.0,
+              "pre_delay": 0.0,
+              "wet_gain": -8.0
             }
           }
         }
@@ -228,21 +206,17 @@
       {
         "name": "change_instrument",
         "arguments": {
-          "track": "guitar_2",
-          "from_program": 29,
-          "to_program": 33
+          "track": "bass",
+          "from_program": 34,
+          "to_program": 37
         }
       },
       {
-        "name": "apply_fx",
+        "name": "layer_instrument",
         "arguments": {
-          "track": "bass",
-          "call": {
-            "effect": "am_gain",
-            "params": {
-              "gain_db": -3.0
-            }
-          }
+          "track": "guitar_2",
+          "additional_program": 55,
+          "mix_ratio": 0.6
         }
       },
       {
@@ -252,7 +226,7 @@
           "call": {
             "effect": "npy_stereo_widener",
             "params": {
-              "width": 1.25
+              "width": 1.4
             }
           }
         }
@@ -262,11 +236,19 @@
         "arguments": {
           "track": "drums",
           "call": {
-            "effect": "am_bit_crush",
+            "effect": "am_lowpass_filter",
             "params": {
-              "bit_depth": 12.0
+              "cutoff_freq": 1500.0,
+              "rolloff": 12.0
             }
           }
+        }
+      },
+      {
+        "name": "humanize_timing",
+        "arguments": {
+          "track": "guitar_1",
+          "max_offset_ms": 15.0
         }
       }
     ],
@@ -283,7 +265,7 @@
     "primary_intent": "arrangement_add",
     "primary_tool": "add_track",
     "target_track": "synth_pad",
-    "motivation": "Production motivation: The choir aahs is fighting the rock organ in the mids\u2014adding the synth pad like Larry Heard's Mr. Fingers would melt that conflict into warm, deep house texture.",
+    "motivation": "Production motivation: The pad 3 needs to fill the warm low-mid space like Mr. Fingers' pads without clashing with the rock organ.",
     "tool_calls": [
       {
         "name": "add_track",
@@ -295,7 +277,33 @@
       {
         "name": "apply_fx",
         "arguments": {
+          "track": "organ",
+          "call": {
+            "effect": "am_highpass_filter",
+            "params": {
+              "cutoff_freq": 300.0,
+              "rolloff": 12.0
+            }
+          }
+        }
+      },
+      {
+        "name": "apply_fx",
+        "arguments": {
           "track": "synth_pad",
+          "call": {
+            "effect": "sox_reverb",
+            "params": {
+              "reverberance": 40.0,
+              "wet_gain": -6.0
+            }
+          }
+        }
+      },
+      {
+        "name": "apply_fx",
+        "arguments": {
+          "track": "strings__continued_2",
           "call": {
             "effect": "am_lowpass_filter",
             "params": {
@@ -308,21 +316,15 @@
       {
         "name": "apply_fx",
         "arguments": {
-          "track": "synth_pad",
+          "track": "drums",
           "call": {
-            "effect": "sox_overdrive",
+            "effect": "sox_compand",
             "params": {
-              "gain_db": 6.0,
-              "colour": 50.0
+              "attack_time": 0.005,
+              "decay_time": 0.1,
+              "soft_knee_db": 3.0
             }
           }
-        }
-      },
-      {
-        "name": "humanize_timing",
-        "arguments": {
-          "track": "bass",
-          "max_offset_ms": 15.0
         }
       }
     ],
@@ -339,46 +341,83 @@
     "primary_intent": "effects",
     "primary_tool": "apply_fx",
     "target_track": null,
-    "motivation": "Production motivation: Make the drums sound like they're in a tiny jazz club with warm reverb, like A Tribe Called Quest's Low End Theory.",
+    "motivation": "Production motivation: It should sound like A Tribe Called Quest's Low End Theory \u2014 loose drums, upright bass, and that warm jazz vibe you get when you're in a smoke-filled room.",
     "tool_calls": [
       {
         "name": "apply_fx",
         "arguments": {
-          "track": "drums",
+          "track": "bass",
+          "call": {
+            "effect": "sox_overdrive",
+            "params": {
+              "gain_db": 8,
+              "colour": 0
+            }
+          }
+        }
+      },
+      {
+        "name": "apply_fx",
+        "arguments": {
+          "track": "mix",
           "call": {
             "effect": "sox_reverb",
             "params": {
-              "reverberance": 25.0,
+              "reverberance": 35,
+              "high_freq_damping": 40,
+              "room_scale": 50,
+              "stereo_depth": 50,
+              "pre_delay": 10,
               "wet_gain": -6.0
             }
           }
         }
       },
       {
-        "name": "layer_instrument",
+        "name": "humanize_timing",
         "arguments": {
-          "track": "strings__continued",
-          "additional_program": 51,
-          "mix_ratio": 0.7
-        }
-      },
-      {
-        "name": "apply_fx",
-        "arguments": {
-          "track": "bass",
-          "call": {
-            "effect": "am_lowpass_filter",
-            "params": {
-              "cutoff_freq": 150.0,
-              "rolloff": 12.0
-            }
-          }
+          "track": "drums",
+          "max_offset_ms": 15
         }
       },
       {
         "name": "remove_track",
         "arguments": {
-          "track_name": "guitar_2"
+          "track_name": "strings__continued"
+        }
+      },
+      {
+        "name": "change_instrument",
+        "arguments": {
+          "track": "bass",
+          "from_program": 33,
+          "to_program": 34
+        }
+      },
+      {
+        "name": "apply_fx",
+        "arguments": {
+          "track": "piano_2",
+          "call": {
+            "effect": "am_low_shelf_filter",
+            "params": {
+              "center_freq": 100,
+              "gain_db": 3,
+              "q": 0.3
+            }
+          }
+        }
+      },
+      {
+        "name": "apply_fx",
+        "arguments": {
+          "track": "mix",
+          "call": {
+            "effect": "npy_stereo_widener",
+            "params": {
+              "width": 1.2
+            }
+          }
         }
       }
     ],
@@ -394,36 +433,24 @@
     "hook": "don't let compression wash out the groove",
     "primary_intent": "performance_timing",
     "primary_tool": "humanize_timing",
-    "target_track": "bass",
-    "motivation": "Production motivation: The fretless bass is too rigidly quantized\u2014don't let compression wash out the groove; humanize its timing with 25ms offset to restore organic swing without sacrificing low-end punch.",
+    "target_track": "strings__continued_1",
+    "motivation": "Production motivation: Don't let compression wash out the groove\u2014add 20ms human timing to the first string ensemble 1 with subtle tanh distortion to prevent sterile platform translation.",
     "tool_calls": [
       {
         "name": "humanize_timing",
         "arguments": {
-          "track": "bass",
-          "max_offset_ms": 25.0
+          "track": "strings__continued_1",
+          "max_offset_ms": 20.0
         }
       },
       {
         "name": "apply_fx",
         "arguments": {
-          "track": "bass",
+          "track": "strings__continued_1",
           "call": {
-            "effect": "sox_overdrive",
+            "effect": "am_tanh_distortion",
             "params": {
-              "gain_db": 8.0
-            }
-          }
-        }
-      },
-      {
-        "name": "apply_fx",
-        "arguments": {
-          "track": "guitar_3",
-          "call": {
-            "effect": "am_highpass_filter",
-            "params": {
-              "cutoff_freq": 200.0
+              "distortion": 0.2
             }
           }
         }
@@ -433,9 +460,36 @@
         "arguments": {
           "track": "strings__continued_1",
           "call": {
-            "effect": "npy_stereo_widener",
+            "effect": "am_highpass_filter",
             "params": {
-              "width": 1.4
+              "cutoff_freq": 150.0,
+              "rolloff": 12.0
+            }
+          }
+        }
+      },
+      {
+        "name": "apply_fx",
+        "arguments": {
+          "track": "bass",
+          "call": {
+            "effect": "am_lowpass_filter",
+            "params": {
+              "cutoff_freq": 300.0,
+              "rolloff": 12.0
+            }
+          }
+        }
+      },
+      {
+        "name": "apply_fx",
+        "arguments": {
+          "track": "piano",
+          "call": {
+            "effect": "am_highpass_filter",
+            "params": {
+              "cutoff_freq": 300.0,
+              "rolloff": 12.0
             }
           }
         }
@@ -445,9 +499,22 @@
         "arguments": {
           "track": "mix",
           "call": {
-            "effect": "pln_loudness_normalize",
+            "effect": "sox_reverb",
             "params": {
-              "target_lufs": -14.0
+              "reverberance": 35.0,
+              "wet_gain": -6.0
+            }
+          }
+        }
+      },
+      {
+        "name": "apply_fx",
+        "arguments": {
+          "track": "mix",
+          "call": {
+            "effect": "am_gain",
+            "params": {
+              "gain_db": -1.0
             }
           }
         }
@@ -465,28 +532,15 @@
     "hook": "dreamy and unhurried, half-asleep in a moving train",
     "primary_intent": "instrument_swap",
     "primary_tool": "change_instrument",
-    "target_track": "piano_3",
-    "motivation": "Production motivation: swapping the second bright acoustic piano to fingered bass creates a dreamy, unhurried undertone that feels like drifting half-asleep on a moving train.",
+    "target_track": "piano_2",
+    "motivation": "Production motivation: Swapping the electric piano 1's jangly brightness for Fretless Bass to achieve that dreamy and unhurried, half-asleep-in-a-moving-train texture.",
     "tool_calls": [
       {
         "name": "change_instrument",
         "arguments": {
-          "track": "piano_3",
-          "from_program": 1,
-          "to_program": 9
-        }
-      },
-      {
-        "name": "apply_fx",
-        "arguments": {
-          "track": "strings__continued",
-          "call": {
-            "effect": "am_lowpass_filter",
-            "params": {
-              "cutoff_freq": 3500.0,
-              "rolloff": 12.0
-            }
-          }
+          "track": "piano_2",
+          "from_program": 4,
+          "to_program": 40
         }
       },
       {
@@ -496,12 +550,38 @@
           "call": {
             "effect": "sox_reverb",
             "params": {
-              "reverberance": 25.0,
-              "high_freq_damping": 70.0,
-              "room_scale": 40.0,
-              "stereo_depth": 80.0,
-              "pre_delay": 15.0,
-              "wet_gain": -6.0
+              "reverberance": 25,
+              "wet_gain": -8.0
+            }
+          }
+        }
+      },
+      {
+        "name": "apply_fx",
+        "arguments": {
+          "track": "piano_2",
+          "call": {
+            "effect": "am_lowpass_filter",
+            "params": {
+              "cutoff_freq": 2400.0,
+              "rolloff": 12.0
+            }
+          }
+        }
+      },
+      {
+        "name": "apply_fx",
+        "arguments": {
+          "track": "strings__continued",
+          "call": {
+            "effect": "sox_chorus",
+            "params": {
+              "gain_in": 0.7,
+              "gain_out": 0.5,
+              "delay_ms": 60.0,
+              "decay": 0.3,
+              "speed": 0.5,
+              "depth": 2.0
             }
           }
         }
@@ -513,21 +593,23 @@
           "call": {
             "effect": "am_gain",
             "params": {
-              "gain_db": -2.0
+              "gain_db": 1.5
             }
           }
         }
       },
       {
-        "name": "apply_fx",
+        "name": "humanize_timing",
         "arguments": {
-          "track": "mix",
-          "call": {
-            "effect": "npy_stereo_widener",
-            "params": {
-              "width": 1.3
-            }
-          }
+          "track": "strings__continued",
+          "max_offset_ms": 15.0
+        }
+      },
+      {
+        "name": "change_velocity",
+        "arguments": {
+          "track": "guitar_1",
+          "scale_factor": 0.95
         }
       }
     ],
@@ -544,13 +626,13 @@
     "primary_intent": "arrangement_add",
     "primary_tool": "add_track",
     "target_track": "drums",
-    "motivation": "Production motivation: Give it that unadorned and simple, bread and butter heartbeat\u2014the drums locked in with a light reverb so the groove feels organic, not just a metronome.",
+    "motivation": "Production motivation: That unadorned and simple, bread-and-butter drum foundation is the heartbeat this track\u2019s been missing\u2014raw, clean, and instantly groove-oriented like a classic hip-hop beat.",
     "tool_calls": [
       {
         "name": "add_track",
         "arguments": {
           "track_name": "drums",
-          "program": 12,
+          "program": 0,
           "gain_db": 0.0
         }
       },
@@ -559,10 +641,9 @@
         "arguments": {
           "track": "drums",
           "call": {
-            "effect": "sox_reverb",
+            "effect": "sox_overdrive",
             "params": {
-              "reverberance": 25.0,
-              "wet_gain": -6.0
+              "gain_db": 8.0
             }
           }
         }
@@ -570,34 +651,26 @@
       {
         "name": "apply_fx",
         "arguments": {
-          "track": "guitar",
+          "track": "piano_2",
+          "call": {
+            "effect": "am_gain",
+            "params": {
+              "gain_db": -2.0
+            }
+          }
+        }
+      },
+      {
+        "name": "apply_fx",
+        "arguments": {
+          "track": "strings__continued",
           "call": {
             "effect": "am_lowpass_filter",
             "params": {
-              "cutoff_freq": 1000.0,
-              "rolloff": 12.0
+              "cutoff_freq": 4000.0,
+              "rolloff": 6.0
             }
           }
-        }
-      },
-      {
-        "name": "apply_fx",
-        "arguments": {
-          "track": "synth_pad",
-          "call": {
-            "effect": "am_highpass_filter",
-            "params": {
-              "cutoff_freq": 200.0,
-              "rolloff": 12.0
-            }
-          }
-        }
-      },
-      {
-        "name": "humanize_timing",
-        "arguments": {
-          "track": "bass",
-          "max_offset_ms": 10.0
         }
       }
     ],
@@ -613,24 +686,31 @@
     "hook": "like fireworks heard from indoors",
     "primary_intent": "performance_articulation",
     "primary_tool": "change_articulation",
-    "target_track": "bass",
-    "motivation": "Production motivation: Let the electric bass breathe like fireworks heard from indoors\u2014smooth legato to dissolve it into the mix\u2019s quiet glow instead of clashing with the strings.",
+    "target_track": "chromatic_percussion_1",
+    "motivation": "Production motivation: Make the first music box sound like fireworks heard from indoors, with staccato notes to cut through the choir.",
     "tool_calls": [
       {
         "name": "change_articulation",
         "arguments": {
-          "track": "bass",
-          "style": "legato"
+          "track": "chromatic_percussion_1",
+          "style": "staccato"
+        }
+      },
+      {
+        "name": "remove_track",
+        "arguments": {
+          "track_name": "chromatic_percussion_3"
         }
       },
       {
         "name": "apply_fx",
         "arguments": {
-          "track": "bass",
+          "track": "strings__continued_3",
           "call": {
-            "effect": "sox_overdrive",
+            "effect": "am_lowpass_filter",
             "params": {
-              "gain_db": 7.0
+              "cutoff_freq": 4000,
+              "rolloff": 6
             }
           }
         }
@@ -640,26 +720,31 @@
         "arguments": {
           "track": "drums",
           "call": {
-            "effect": "sox_reverb",
+            "effect": "am_highpass_filter",
             "params": {
-              "reverberance": 35,
-              "wet_gain": -6.0
+              "cutoff_freq": 100,
+              "rolloff": 6
             }
           }
         }
       },
       {
-        "name": "remove_track",
+        "name": "change_instrument",
         "arguments": {
-          "track_name": "strings__continued_3"
+          "track": "guitar",
+          "to_program": 12
         }
       },
       {
-        "name": "change_instrument",
+        "name": "apply_fx",
         "arguments": {
-          "track": "chromatic_percussion_3",
-          "from_program": 10,
-          "to_program": 11
+          "track": "piano",
+          "call": {
+            "effect": "sox_overdrive",
+            "params": {
+              "gain_db": 8
+            }
+          }
         }
       }
     ],
@@ -676,7 +761,7 @@
     "primary_intent": "effects",
     "primary_tool": "apply_fx",
     "target_track": null,
-    "motivation": "Production motivation: Spring reverb on drums, 700ms decay (reverberance 50, wet_gain -4dB) to add natural space without masking kick attack.",
+    "motivation": "Production motivation: Spring reverb emulation on drums, 700ms decay; apply sox_reverb (reverberance 30, high_freq_damping 70, room_scale 70, wet_gain -4dB) to create space without masking.",
     "tool_calls": [
       {
         "name": "apply_fx",
@@ -685,25 +770,12 @@
           "call": {
             "effect": "sox_reverb",
             "params": {
-              "reverberance": 50,
-              "high_freq_damping": 60,
-              "room_scale": 70,
-              "stereo_depth": 70,
-              "pre_delay": 5,
-              "wet_gain": -4
-            }
-          }
-        }
-      },
-      {
-        "name": "apply_fx",
-        "arguments": {
-          "track": "drums",
-          "call": {
-            "effect": "am_highpass_filter",
-            "params": {
-              "cutoff_freq": 80,
-              "rolloff": 12
+              "reverberance": 30.0,
+              "high_freq_damping": 70.0,
+              "room_scale": 70.0,
+              "stereo_depth": 50.0,
+              "pre_delay": 20.0,
+              "wet_gain": -4.0
             }
           }
         }
@@ -713,10 +785,35 @@
         "arguments": {
           "track": "guitar_1",
           "call": {
+            "effect": "am_highpass_filter",
+            "params": {
+              "cutoff_freq": 300.0,
+              "rolloff": 12.0
+            }
+          }
+        }
+      },
+      {
+        "name": "apply_fx",
+        "arguments": {
+          "track": "synth_pad_2",
+          "call": {
             "effect": "am_lowpass_filter",
             "params": {
-              "cutoff_freq": 2000,
-              "rolloff": 12
+              "cutoff_freq": 3000.0,
+              "rolloff": 12.0
+            }
+          }
+        }
+      },
+      {
+        "name": "apply_fx",
+        "arguments": {
+          "track": "drums",
+          "call": {
+            "effect": "am_gain",
+            "params": {
+              "gain_db": 1.0
             }
           }
         }
@@ -725,7 +822,22 @@
         "name": "humanize_timing",
         "arguments": {
           "track": "drums",
-          "max_offset_ms": 15
+          "max_offset_ms": 10.0
+        }
+      },
+      {
+        "name": "change_velocity",
+        "arguments": {
+          "track": "drums",
+          "scale_factor": 0.95
+        }
+      },
+      {
+        "name": "layer_instrument",
+        "arguments": {
+          "track": "piano",
+          "additional_program": 17,
+          "mix_ratio": 0.5
         }
       }
     ],

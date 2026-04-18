@@ -320,6 +320,15 @@ def generate_one(
     )
     for ts in state.tracks.values():
         ts.audio = renderer.render_track(ts, duration_sec)
+    # Snapshot the pre-execution mixdown — this IS the original audio we
+    # store. For arrangement_add the state has the target track withheld
+    # (pending_tracks, not state.tracks), so this snapshot is the
+    # *incomplete* mix; after add_track executes, modified_mix will contain
+    # the complete mix with the new stem. For every other intent the state
+    # already has all tracks, so original vs modified differ only by the
+    # tool's effect. Copy because _mixdown returns a fresh array but we
+    # want to be explicit.
+    snapshot_before = _mixdown(state).copy() if state.tracks else np.zeros((2, 1), dtype=np.float32)
     # Capture pre-execution metadata — tool calls mutate state in place.
     input_metadata = describe_mixture(state, track)
 
@@ -446,10 +455,11 @@ def generate_one(
             })
     executed_ok = executed > 0 and executed == len(tr.tool_calls)
 
-    original_mix = _compute_original_mix(
-        track, sample_rate, start, duration_sec, renderer
-    )
-    modified_mix = _mixdown(state) if state.tracks else np.zeros_like(original_mix)
+    # Original = pre-execution snapshot (see comment above). Modified =
+    # post-execution mixdown. For arrangement_add, this yields the proposal
+    # §3.2 Category D pair: input=incomplete, output=complete.
+    original_mix = snapshot_before
+    modified_mix = _mixdown(state) if state.tracks else np.zeros_like(snapshot_before)
     mix_rms_original = _safe_rms(original_mix)
     mix_rms_modified = _safe_rms(modified_mix)
 
@@ -518,22 +528,6 @@ def generate_one(
     )
     (out_dir / f"{stem}.json").write_text(json.dumps(entry.to_json(), indent=2))
     return entry
-
-
-def _compute_original_mix(
-    track: TrackMeta, sample_rate: int, start: float, dur: float,
-    renderer: FluidSynthRenderer,
-) -> np.ndarray:
-    """Render the unmodified mixture (no withhold) for the 'original_audio' side.
-
-    We render twice (once for input-to-model, once for original_audio) rather
-    than caching the first because tool_calls that mutate the state would
-    poison a shared reference.
-    """
-    state = build_mixture_state(track, sample_rate, start, dur)
-    for ts in state.tracks.values():
-        ts.audio = renderer.render_track(ts, dur)
-    return _mixdown(state)
 
 
 def _choose_withhold(track: TrackMeta, role: str | None = None,

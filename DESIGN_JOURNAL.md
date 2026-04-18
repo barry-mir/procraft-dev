@@ -194,6 +194,7 @@ targets are NOT honored — simplification).
 | 18 | 143 s | Bounded-retry on empty motivation / missing primary tool | 10/10 valid, `attempt_count` recorded per entry |
 | demo | 181 s | 10 tracks × random intent, MP3 transcode, static HTML at `docs/` | Pushed commit `34e6a34`; GitHub Pages-ready |
 | fix | — | User noted `sox_overdrive` cookbook default 20–35 dB was too heavy | Cookbook reworked: EFFECT STRENGTH table now has explicit light / medium / strong ranges per effect, keyed to motivation vocabulary ("subtle" → light, "driven" → medium, "aggressive" → strong) |
+| fix | — | `arrangement_add` case 08 played drums in BOTH original AND modified — broken semantic | Was computing `original_mix` with a fresh non-withheld state, so both sides had the "added" stem. Switched to snapshot-before-exec: `original_mix = _mixdown(state).copy()` captured right after stem render but before tool_calls execute. For arrangement_add the state has the target withheld → snapshot is the incomplete mix (proposal §3.2 Category D: input=incomplete, output=complete). For every other intent it's the unmodified full mix as before. Also removed the redundant `_compute_original_mix` helper (double-render waste). |
 
 ---
 

@@ -92,10 +92,10 @@ footer {
     <span class="idx">Case 01</span>
     <span class="track">Track00001</span>
     <span class="intent">arrangement_add</span>
-    <span class="role">mastering_engineer</span>
+    <span class="role">film_tv_music_supervisor</span>
   </header>
-  <p class="motivation">Production motivation: The mix is sounding overly clinical with only the first harmonica as harmonica; adding the second harmonica as the second harmonica will add natural warmth while avoiding anything that sounds obviously digital.</p>
-  <p class="hint">listen for → <code>added: organ_3 (GM 22)</code></p>
+  <p class="motivation">Production motivation: The scene needs a visceral heartbeat that avoids synthetic drum-machine precision — no obvious digital artifacts, just the natural sway of live percussion to ground the emotional pull of the character&#x27;s final walk.</p>
+  <p class="hint">listen for → <code>added: drums (GM 11)</code></p>
   <div class="players">
     <div class="player">
       <div class="label">Original</div>
@@ -107,8 +107,8 @@ footer {
     </div>
   </div>
   <details class="toolcalls">
-    <summary>tool_calls (7)</summary>
-    <code>add_track(organ_3, {&quot;program&quot;:22})<br>apply_fx(mix, am_tanh_distortion, {&quot;distortion&quot;:0.05})<br>apply_fx(mix, am_loudness_normalization, {&quot;lufs&quot;:-14.0})<br>apply_fx(mix, am_low_shelf_filter, {&quot;center_freq&quot;:100.0,&quot;gain_db&quot;:2.0,&quot;q&quot;:0.5})<br>apply_fx(mix, am_highpass_filter, {&quot;cutoff_freq&quot;:30.0,&quot;rolloff&quot;:6.0})<br>apply_fx(mix, npy_stereo_widener, {&quot;width&quot;:1.2})<br>apply_fx(mix, sox_reverb, {&quot;reverberance&quot;:30.0,&quot;high_freq_damping&quot;:70.0,&quot;wet_gain&quot;:-8.0})</code>
+    <summary>tool_calls (6)</summary>
+    <code>add_track(drums, {&quot;program&quot;:11,&quot;gain_db&quot;:-3.0})<br>layer_instrument(guitar_3, {&quot;additional_program&quot;:27,&quot;mix_ratio&quot;:0.3})<br>apply_fx(bass, am_highpass_filter, {&quot;cutoff_freq&quot;:80.0,&quot;rolloff&quot;:12.0})<br>apply_fx(drums, sox_overdrive, {&quot;gain_db&quot;:8.0})<br>apply_fx(strings__continued, am_lowpass_filter, {&quot;cutoff_freq&quot;:3000.0,&quot;rolloff&quot;:18.0})<br>apply_fx(guitar_2, sox_treble, {&quot;gain_db&quot;:5.0,&quot;frequency&quot;:4000.0,&quot;slope&quot;:0.5})</code>
   </details>
 </section>
 
@@ -119,7 +119,7 @@ footer {
     <span class="intent">arrangement_remove</span>
     <span class="role">film_tv_music_supervisor</span>
   </header>
-  <p class="motivation">Production motivation: The choir aahs cluttered the midrange like looking through a screen door at a party—removing them lets the synth strings and lead 2 breathe.</p>
+  <p class="motivation">Production motivation: The mix feels like looking through a screen door at a party, where the choir aahs is smearing the clarity of the synth strings and lead.</p>
   <p class="hint">listen for → <code>removed: strings__continued_2</code></p>
   <div class="players">
     <div class="player">
@@ -132,8 +132,8 @@ footer {
     </div>
   </div>
   <details class="toolcalls">
-    <summary>tool_calls (7)</summary>
-    <code>remove_track(strings__continued_2, {})<br>apply_fx(synth_pad, am_highpass_filter, {&quot;cutoff_freq&quot;:250.0,&quot;rolloff&quot;:12.0})<br>apply_fx(synth_lead, am_tanh_distortion, {&quot;distortion&quot;:0.2})<br>change_instrument(piano, {&quot;from_program&quot;:7,&quot;to_program&quot;:1})<br>apply_fx(drums, sox_compand, {&quot;attack_time&quot;:0.01,&quot;decay_time&quot;:0.1,&quot;soft_knee_db&quot;:5})<br>apply_fx(drums, sox_reverb, {&quot;reverberance&quot;:40.0,&quot;wet_gain&quot;:-6.0})<br>apply_fx(bass, am_low_shelf_filter, {&quot;center_freq&quot;:120.0,&quot;gain_db&quot;:3.0,&quot;Q&quot;:0.5})</code>
+    <summary>tool_calls (6)</summary>
+    <code>remove_track(strings__continued_2, {})<br>apply_fx(strings__continued_1, am_highpass_filter, {&quot;cutoff_freq&quot;:150.0,&quot;rolloff&quot;:12.0})<br>apply_fx(synth_pad, am_high_shelf_filter, {&quot;center_freq&quot;:2500.0,&quot;gain_db&quot;:3.0,&quot;q&quot;:0.7})<br>apply_fx(synth_lead, am_tanh_distortion, {&quot;distortion&quot;:0.2})<br>apply_fx(drums, am_gain, {&quot;gain_db&quot;:1.5})<br>apply_fx(bass, am_lowpass_filter, {&quot;cutoff_freq&quot;:800.0,&quot;rolloff&quot;:12.0})</code>
   </details>
 </section>
 
@@ -144,8 +144,8 @@ footer {
     <span class="intent">performance_velocity</span>
     <span class="role">non_musician_client</span>
   </header>
-  <p class="motivation">Production motivation: The bright acoustic piano sounds like it&#x27;s playing in a silent room, too clean and flat—don&#x27;t let it feel like a robot, no crisp notes or anything that sticks out as *the* moment.</p>
-  <p class="hint">listen for → <code>velocity: piano × 0.85</code></p>
+  <p class="motivation">Production motivation: The acoustic guitar feels too rigid and wants to be the center of attention—smooth it out so no moment becomes &quot;the hook&quot;, even in the texture.</p>
+  <p class="hint">listen for → <code>velocity: guitar_1 × 0.7</code></p>
   <div class="players">
     <div class="player">
       <div class="label">Original</div>
@@ -157,8 +157,8 @@ footer {
     </div>
   </div>
   <details class="toolcalls">
-    <summary>tool_calls (6)</summary>
-    <code>change_velocity(piano, {&quot;scale_factor&quot;:0.85})<br>apply_fx(piano, sox_reverb, {&quot;reverberance&quot;:35.0,&quot;wet_gain&quot;:-6.0})<br>change_instrument(guitar_2, {&quot;from_program&quot;:29,&quot;to_program&quot;:33})<br>apply_fx(bass, am_gain, {&quot;gain_db&quot;:-3.0})<br>apply_fx(mix, npy_stereo_widener, {&quot;width&quot;:1.25})<br>apply_fx(drums, am_bit_crush, {&quot;bit_depth&quot;:12.0})</code>
+    <summary>tool_calls (7)</summary>
+    <code>change_velocity(guitar_1, {&quot;scale_factor&quot;:0.7})<br>apply_fx(guitar_1, sox_reverb, {&quot;reverberance&quot;:30.0,&quot;high_freq_damping&quot;:40.0,&quot;room_scale&quot;:50.0,&quot;stereo_depth&quot;:60.0,&quot;pre_delay&quot;:0.0,&quot;wet_gain&quot;:-8.0})<br>change_instrument(bass, {&quot;from_program&quot;:34,&quot;to_program&quot;:37})<br>layer_instrument(guitar_2, {&quot;additional_program&quot;:55,&quot;mix_ratio&quot;:0.6})<br>apply_fx(mix, npy_stereo_widener, {&quot;width&quot;:1.4})<br>apply_fx(drums, am_lowpass_filter, {&quot;cutoff_freq&quot;:1500.0,&quot;rolloff&quot;:12.0})<br>humanize_timing(guitar_1, {&quot;max_offset_ms&quot;:15.0})</code>
   </details>
 </section>
 
@@ -169,7 +169,7 @@ footer {
     <span class="intent">arrangement_add</span>
     <span class="role">session_keyboardist</span>
   </header>
-  <p class="motivation">Production motivation: The choir aahs is fighting the rock organ in the mids—adding the synth pad like Larry Heard&#x27;s Mr. Fingers would melt that conflict into warm, deep house texture.</p>
+  <p class="motivation">Production motivation: The pad 3 needs to fill the warm low-mid space like Mr. Fingers&#x27; pads without clashing with the rock organ.</p>
   <p class="hint">listen for → <code>added: synth_pad (GM 90)</code></p>
   <div class="players">
     <div class="player">
@@ -182,8 +182,8 @@ footer {
     </div>
   </div>
   <details class="toolcalls">
-    <summary>tool_calls (4)</summary>
-    <code>add_track(synth_pad, {&quot;program&quot;:90})<br>apply_fx(synth_pad, am_lowpass_filter, {&quot;cutoff_freq&quot;:3000.0,&quot;rolloff&quot;:12.0})<br>apply_fx(synth_pad, sox_overdrive, {&quot;gain_db&quot;:6.0,&quot;colour&quot;:50.0})<br>humanize_timing(bass, {&quot;max_offset_ms&quot;:15.0})</code>
+    <summary>tool_calls (5)</summary>
+    <code>add_track(synth_pad, {&quot;program&quot;:90})<br>apply_fx(organ, am_highpass_filter, {&quot;cutoff_freq&quot;:300.0,&quot;rolloff&quot;:12.0})<br>apply_fx(synth_pad, sox_reverb, {&quot;reverberance&quot;:40.0,&quot;wet_gain&quot;:-6.0})<br>apply_fx(strings__continued_2, am_lowpass_filter, {&quot;cutoff_freq&quot;:3000.0,&quot;rolloff&quot;:12.0})<br>apply_fx(drums, sox_compand, {&quot;attack_time&quot;:0.005,&quot;decay_time&quot;:0.1,&quot;soft_knee_db&quot;:3.0})</code>
   </details>
 </section>
 
@@ -194,8 +194,8 @@ footer {
     <span class="intent">effects</span>
     <span class="role">non_musician_client</span>
   </header>
-  <p class="motivation">Production motivation: Make the drums sound like they&#x27;re in a tiny jazz club with warm reverb, like A Tribe Called Quest&#x27;s Low End Theory.</p>
-  <p class="hint">listen for → <code>fx: drums  sox_reverb</code></p>
+  <p class="motivation">Production motivation: It should sound like A Tribe Called Quest&#x27;s Low End Theory — loose drums, upright bass, and that warm jazz vibe you get when you&#x27;re in a smoke-filled room.</p>
+  <p class="hint">listen for → <code>fx: bass  sox_overdrive</code></p>
   <div class="players">
     <div class="player">
       <div class="label">Original</div>
@@ -207,8 +207,8 @@ footer {
     </div>
   </div>
   <details class="toolcalls">
-    <summary>tool_calls (4)</summary>
-    <code>apply_fx(drums, sox_reverb, {&quot;reverberance&quot;:25.0,&quot;wet_gain&quot;:-6.0})<br>layer_instrument(strings__continued, {&quot;additional_program&quot;:51,&quot;mix_ratio&quot;:0.7})<br>apply_fx(bass, am_lowpass_filter, {&quot;cutoff_freq&quot;:150.0,&quot;rolloff&quot;:12.0})<br>remove_track(guitar_2, {})</code>
+    <summary>tool_calls (7)</summary>
+    <code>apply_fx(bass, sox_overdrive, {&quot;gain_db&quot;:8,&quot;colour&quot;:0})<br>apply_fx(mix, sox_reverb, {&quot;reverberance&quot;:35,&quot;high_freq_damping&quot;:40,&quot;room_scale&quot;:50,&quot;stereo_depth&quot;:50,&quot;pre_delay&quot;:10,&quot;wet_gain&quot;:-6.0})<br>humanize_timing(drums, {&quot;max_offset_ms&quot;:15})<br>remove_track(strings__continued, {})<br>change_instrument(bass, {&quot;from_program&quot;:33,&quot;to_program&quot;:34})<br>apply_fx(piano_2, am_low_shelf_filter, {&quot;center_freq&quot;:100,&quot;gain_db&quot;:3,&quot;q&quot;:0.3})<br>apply_fx(mix, npy_stereo_widener, {&quot;width&quot;:1.2})</code>
   </details>
 </section>
 
@@ -219,8 +219,8 @@ footer {
     <span class="intent">performance_timing</span>
     <span class="role">mastering_engineer</span>
   </header>
-  <p class="motivation">Production motivation: The fretless bass is too rigidly quantized—don&#x27;t let compression wash out the groove; humanize its timing with 25ms offset to restore organic swing without sacrificing low-end punch.</p>
-  <p class="hint">listen for → <code>humanize: bass  ±25.0 ms</code></p>
+  <p class="motivation">Production motivation: Don&#x27;t let compression wash out the groove—add 20ms human timing to the first string ensemble 1 with subtle tanh distortion to prevent sterile platform translation.</p>
+  <p class="hint">listen for → <code>humanize: strings__continued_1  ±20.0 ms</code></p>
   <div class="players">
     <div class="player">
       <div class="label">Original</div>
@@ -232,8 +232,8 @@ footer {
     </div>
   </div>
   <details class="toolcalls">
-    <summary>tool_calls (5)</summary>
-    <code>humanize_timing(bass, {&quot;max_offset_ms&quot;:25.0})<br>apply_fx(bass, sox_overdrive, {&quot;gain_db&quot;:8.0})<br>apply_fx(guitar_3, am_highpass_filter, {&quot;cutoff_freq&quot;:200.0})<br>apply_fx(strings__continued_1, npy_stereo_widener, {&quot;width&quot;:1.4})<br>apply_fx(mix, pln_loudness_normalize, {&quot;target_lufs&quot;:-14.0})</code>
+    <summary>tool_calls (7)</summary>
+    <code>humanize_timing(strings__continued_1, {&quot;max_offset_ms&quot;:20.0})<br>apply_fx(strings__continued_1, am_tanh_distortion, {&quot;distortion&quot;:0.2})<br>apply_fx(strings__continued_1, am_highpass_filter, {&quot;cutoff_freq&quot;:150.0,&quot;rolloff&quot;:12.0})<br>apply_fx(bass, am_lowpass_filter, {&quot;cutoff_freq&quot;:300.0,&quot;rolloff&quot;:12.0})<br>apply_fx(piano, am_highpass_filter, {&quot;cutoff_freq&quot;:300.0,&quot;rolloff&quot;:12.0})<br>apply_fx(mix, sox_reverb, {&quot;reverberance&quot;:35.0,&quot;wet_gain&quot;:-6.0})<br>apply_fx(mix, am_gain, {&quot;gain_db&quot;:-1.0})</code>
   </details>
 </section>
 
@@ -244,8 +244,8 @@ footer {
     <span class="intent">instrument_swap</span>
     <span class="role">mixing_engineer_self_note</span>
   </header>
-  <p class="motivation">Production motivation: swapping the second bright acoustic piano to fingered bass creates a dreamy, unhurried undertone that feels like drifting half-asleep on a moving train.</p>
-  <p class="hint">listen for → <code>swapped: piano_3  GM 1 → 9</code></p>
+  <p class="motivation">Production motivation: Swapping the electric piano 1&#x27;s jangly brightness for Fretless Bass to achieve that dreamy and unhurried, half-asleep-in-a-moving-train texture.</p>
+  <p class="hint">listen for → <code>swapped: piano_2  GM 4 → 40</code></p>
   <div class="players">
     <div class="player">
       <div class="label">Original</div>
@@ -257,8 +257,8 @@ footer {
     </div>
   </div>
   <details class="toolcalls">
-    <summary>tool_calls (5)</summary>
-    <code>change_instrument(piano_3, {&quot;from_program&quot;:1,&quot;to_program&quot;:9})<br>apply_fx(strings__continued, am_lowpass_filter, {&quot;cutoff_freq&quot;:3500.0,&quot;rolloff&quot;:12.0})<br>apply_fx(mix, sox_reverb, {&quot;reverberance&quot;:25.0,&quot;high_freq_damping&quot;:70.0,&quot;room_scale&quot;:40.0,&quot;stereo_depth&quot;:80.0,&quot;pre_delay&quot;:15.0,&quot;wet_gain&quot;:-6.0})<br>apply_fx(bass, am_gain, {&quot;gain_db&quot;:-2.0})<br>apply_fx(mix, npy_stereo_widener, {&quot;width&quot;:1.3})</code>
+    <summary>tool_calls (7)</summary>
+    <code>change_instrument(piano_2, {&quot;from_program&quot;:4,&quot;to_program&quot;:40})<br>apply_fx(mix, sox_reverb, {&quot;reverberance&quot;:25,&quot;wet_gain&quot;:-8.0})<br>apply_fx(piano_2, am_lowpass_filter, {&quot;cutoff_freq&quot;:2400.0,&quot;rolloff&quot;:12.0})<br>apply_fx(strings__continued, sox_chorus, {&quot;gain_in&quot;:0.7,&quot;gain_out&quot;:0.5,&quot;delay_ms&quot;:60.0,&quot;decay&quot;:0.3,&quot;speed&quot;:0.5,&quot;depth&quot;:2.0})<br>apply_fx(bass, am_gain, {&quot;gain_db&quot;:1.5})<br>humanize_timing(strings__continued, {&quot;max_offset_ms&quot;:15.0})<br>change_velocity(guitar_1, {&quot;scale_factor&quot;:0.95})</code>
   </details>
 </section>
 
@@ -269,8 +269,8 @@ footer {
     <span class="intent">arrangement_add</span>
     <span class="role">producer</span>
   </header>
-  <p class="motivation">Production motivation: Give it that unadorned and simple, bread and butter heartbeat—the drums locked in with a light reverb so the groove feels organic, not just a metronome.</p>
-  <p class="hint">listen for → <code>added: drums (GM 12)</code></p>
+  <p class="motivation">Production motivation: That unadorned and simple, bread-and-butter drum foundation is the heartbeat this track’s been missing—raw, clean, and instantly groove-oriented like a classic hip-hop beat.</p>
+  <p class="hint">listen for → <code>added: drums (GM 0)</code></p>
   <div class="players">
     <div class="player">
       <div class="label">Original</div>
@@ -282,8 +282,8 @@ footer {
     </div>
   </div>
   <details class="toolcalls">
-    <summary>tool_calls (5)</summary>
-    <code>add_track(drums, {&quot;program&quot;:12,&quot;gain_db&quot;:0.0})<br>apply_fx(drums, sox_reverb, {&quot;reverberance&quot;:25.0,&quot;wet_gain&quot;:-6.0})<br>apply_fx(guitar, am_lowpass_filter, {&quot;cutoff_freq&quot;:1000.0,&quot;rolloff&quot;:12.0})<br>apply_fx(synth_pad, am_highpass_filter, {&quot;cutoff_freq&quot;:200.0,&quot;rolloff&quot;:12.0})<br>humanize_timing(bass, {&quot;max_offset_ms&quot;:10.0})</code>
+    <summary>tool_calls (4)</summary>
+    <code>add_track(drums, {&quot;program&quot;:0,&quot;gain_db&quot;:0.0})<br>apply_fx(drums, sox_overdrive, {&quot;gain_db&quot;:8.0})<br>apply_fx(piano_2, am_gain, {&quot;gain_db&quot;:-2.0})<br>apply_fx(strings__continued, am_lowpass_filter, {&quot;cutoff_freq&quot;:4000.0,&quot;rolloff&quot;:6.0})</code>
   </details>
 </section>
 
@@ -294,8 +294,8 @@ footer {
     <span class="intent">performance_articulation</span>
     <span class="role">producer</span>
   </header>
-  <p class="motivation">Production motivation: Let the electric bass breathe like fireworks heard from indoors—smooth legato to dissolve it into the mix’s quiet glow instead of clashing with the strings.</p>
-  <p class="hint">listen for → <code>articulation: bass → legato</code></p>
+  <p class="motivation">Production motivation: Make the first music box sound like fireworks heard from indoors, with staccato notes to cut through the choir.</p>
+  <p class="hint">listen for → <code>articulation: chromatic_percussion_1 → staccato</code></p>
   <div class="players">
     <div class="player">
       <div class="label">Original</div>
@@ -307,8 +307,8 @@ footer {
     </div>
   </div>
   <details class="toolcalls">
-    <summary>tool_calls (5)</summary>
-    <code>change_articulation(bass, {&quot;style&quot;:&quot;legato&quot;})<br>apply_fx(bass, sox_overdrive, {&quot;gain_db&quot;:7.0})<br>apply_fx(drums, sox_reverb, {&quot;reverberance&quot;:35,&quot;wet_gain&quot;:-6.0})<br>remove_track(strings__continued_3, {})<br>change_instrument(chromatic_percussion_3, {&quot;from_program&quot;:10,&quot;to_program&quot;:11})</code>
+    <summary>tool_calls (6)</summary>
+    <code>change_articulation(chromatic_percussion_1, {&quot;style&quot;:&quot;staccato&quot;})<br>remove_track(chromatic_percussion_3, {})<br>apply_fx(strings__continued_3, am_lowpass_filter, {&quot;cutoff_freq&quot;:4000,&quot;rolloff&quot;:6})<br>apply_fx(drums, am_highpass_filter, {&quot;cutoff_freq&quot;:100,&quot;rolloff&quot;:6})<br>change_instrument(guitar, {&quot;to_program&quot;:12})<br>apply_fx(piano, sox_overdrive, {&quot;gain_db&quot;:8})</code>
   </details>
 </section>
 
@@ -319,7 +319,7 @@ footer {
     <span class="intent">effects</span>
     <span class="role">session_drummer</span>
   </header>
-  <p class="motivation">Production motivation: Spring reverb on drums, 700ms decay (reverberance 50, wet_gain -4dB) to add natural space without masking kick attack.</p>
+  <p class="motivation">Production motivation: Spring reverb emulation on drums, 700ms decay; apply sox_reverb (reverberance 30, high_freq_damping 70, room_scale 70, wet_gain -4dB) to create space without masking.</p>
   <p class="hint">listen for → <code>fx: drums  sox_reverb</code></p>
   <div class="players">
     <div class="player">
@@ -332,8 +332,8 @@ footer {
     </div>
   </div>
   <details class="toolcalls">
-    <summary>tool_calls (4)</summary>
-    <code>apply_fx(drums, sox_reverb, {&quot;reverberance&quot;:50,&quot;high_freq_damping&quot;:60,&quot;room_scale&quot;:70,&quot;stereo_depth&quot;:70,&quot;pre_delay&quot;:5,&quot;wet_gain&quot;:-4})<br>apply_fx(drums, am_highpass_filter, {&quot;cutoff_freq&quot;:80,&quot;rolloff&quot;:12})<br>apply_fx(guitar_1, am_lowpass_filter, {&quot;cutoff_freq&quot;:2000,&quot;rolloff&quot;:12})<br>humanize_timing(drums, {&quot;max_offset_ms&quot;:15})</code>
+    <summary>tool_calls (7)</summary>
+    <code>apply_fx(drums, sox_reverb, {&quot;reverberance&quot;:30.0,&quot;high_freq_damping&quot;:70.0,&quot;room_scale&quot;:70.0,&quot;stereo_depth&quot;:50.0,&quot;pre_delay&quot;:20.0,&quot;wet_gain&quot;:-4.0})<br>apply_fx(guitar_1, am_highpass_filter, {&quot;cutoff_freq&quot;:300.0,&quot;rolloff&quot;:12.0})<br>apply_fx(synth_pad_2, am_lowpass_filter, {&quot;cutoff_freq&quot;:3000.0,&quot;rolloff&quot;:12.0})<br>apply_fx(drums, am_gain, {&quot;gain_db&quot;:1.0})<br>humanize_timing(drums, {&quot;max_offset_ms&quot;:10.0})<br>change_velocity(drums, {&quot;scale_factor&quot;:0.95})<br>layer_instrument(piano, {&quot;additional_program&quot;:17,&quot;mix_ratio&quot;:0.5})</code>
   </details>
 </section>
 
