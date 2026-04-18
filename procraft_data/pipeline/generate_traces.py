@@ -62,6 +62,8 @@ class DatasetEntry:
     target_track: str | None
     target_program: int | None
     primary_move_executed: bool
+    attempt_count: int                   # 1 = first try succeeded; >1 = retried
+    retry_reasons: list[str]             # reason per retry, length == attempt_count-1
     temperature: float
     motivation: str
     think: str | None
@@ -235,6 +237,19 @@ def _track_audio(state: MixtureState, name: str | None) -> np.ndarray:
     return ts.audio
 
 
+def _result_is_valid(motivation: str, tool_calls: list[dict], primary_tool: str) -> tuple[bool, str]:
+    """Return ``(valid, reason_if_not)`` for a freshly-generated response.
+
+    A valid response: has a non-empty motivation text AND emitted the
+    primary-move tool. Anything else is retryable.
+    """
+    if not motivation.strip():
+        return False, "empty motivation line"
+    if not any(tc.get("name") == primary_tool for tc in tool_calls):
+        return False, f"primary tool {primary_tool!r} missing from tool_calls"
+    return True, ""
+
+
 def generate_one(
     track: TrackMeta,
     spec: PromptSpec,
@@ -246,8 +261,18 @@ def generate_one(
     sample_rate: int = paths.SAMPLE_RATE,
     entry_idx: int = 0,
     withhold_for_add: list[str] | None = None,
+    max_retries: int = 3,
 ) -> DatasetEntry:
-    """One (prompt → response → execute → save) round-trip."""
+    """One (prompt → response → execute → save) round-trip, with retry.
+
+    If the first LLM call returns an empty motivation or doesn't emit the
+    pre-committed primary tool, retry up to ``max_retries`` times. Each
+    retry issues a fresh sampling call (same prompt, LLM non-determinism
+    gives us different output); reasons are recorded on the saved entry.
+    After the final attempt, whatever we have is stored with
+    ``executed_ok = False`` and ``retry_reasons`` populated so a downstream
+    quality filter can drop it.
+    """
     import pretty_midi
     longest = max(pretty_midi.PrettyMIDI(str(track.midi_path(sid))).get_end_time()
                   for sid in track.stems)
@@ -314,26 +339,37 @@ def generate_one(
         temperature=spec.temperature,
     )
 
-    tr: TraceResult = client.complete(spec)
+    tr: TraceResult
+    retry_reasons: list[str] = []
+    attempt = 0
+    while True:
+        attempt += 1
+        tr = client.complete(spec)
 
-    # Coerce any top-level tool name that's actually a multiafx effect into
-    # the proper apply_fx form. Qwen3 sometimes emits e.g.
-    # ``{"name": "npy_stereo_widener", "arguments": {"track": "mix", "width": 1.5}}``
-    # when the correct form is an apply_fx envelope.
-    tr.tool_calls = [_coerce_top_level_fx(tc) for tc in tr.tool_calls]
+        # Coerce any top-level tool name that's actually a multiafx effect into
+        # the proper apply_fx form. Qwen3 sometimes emits e.g.
+        # ``{"name": "npy_stereo_widener", "arguments": {"track": "mix", "width": 1.5}}``
+        # when the correct form is an apply_fx envelope.
+        tr.tool_calls = [_coerce_top_level_fx(tc) for tc in tr.tool_calls]
 
-    # Deduplicate tool_calls using a canonical key — floats rounded to 3 dp,
-    # keys sorted — so Qwen3 repeat-emissions that only differ in numeric
-    # formatting (e.g. ``45.0`` vs ``45``) collapse correctly.
-    seen: set[str] = set()
-    deduped: list[dict] = []
-    for tc in tr.tool_calls:
-        key = json.dumps(_canonicalize_tool_call(tc), sort_keys=True)
-        if key in seen:
-            continue
-        seen.add(key)
-        deduped.append(tc)
-    tr.tool_calls = deduped
+        # Deduplicate tool_calls using a canonical key (rounded floats, sorted keys)
+        # so Qwen3 repeat-emissions collapse correctly.
+        seen: set[str] = set()
+        deduped: list[dict] = []
+        for tc in tr.tool_calls:
+            key = json.dumps(_canonicalize_tool_call(tc), sort_keys=True)
+            if key in seen:
+                continue
+            seen.add(key)
+            deduped.append(tc)
+        tr.tool_calls = deduped
+
+        valid, why = _result_is_valid(
+            tr.motivation_text, tr.tool_calls, spec.primary_tool
+        )
+        if valid or attempt > max_retries:
+            break
+        retry_reasons.append(f"attempt {attempt}: {why}")
 
     errors: list[str] = []
     executed = 0
@@ -403,11 +439,13 @@ def generate_one(
         tc.get("name") == spec.primary_tool for tc in tr.tool_calls
     )
 
-    # Rare Qwen3-Thinking failure mode: model spends all budget on <think>
-    # then emits tool_calls but skips the "Production motivation: …" line.
-    # Flag these explicitly so the dataset builder drops them later.
-    if not tr.motivation_text.strip():
-        errors.append("empty motivation (model skipped the sentence)")
+    # Final validity check — if retry loop gave up, mark executed_ok=False so
+    # the downstream quality filter drops this entry.
+    final_valid, final_why = _result_is_valid(
+        tr.motivation_text, tr.tool_calls, spec.primary_tool
+    )
+    if not final_valid:
+        errors.append(f"final-attempt invalid: {final_why}")
         executed_ok = False
 
     # Post-process the motivation: swap any leaked internal track IDs for
@@ -434,6 +472,8 @@ def generate_one(
         target_track=spec.target_track,
         target_program=spec.target_program,
         primary_move_executed=primary_move_executed,
+        attempt_count=attempt,
+        retry_reasons=retry_reasons,
         temperature=spec.temperature,
         motivation=cleaned_motivation,
         think=tr.reasoning_text,

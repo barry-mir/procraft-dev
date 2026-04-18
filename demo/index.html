@@ -1,0 +1,325 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ProCraft — 10-case audio demo</title>
+<style>
+:root {
+  --bg: #fbfaf7;
+  --fg: #1b1b1b;
+  --muted: #7a7a7a;
+  --accent: #b94f1f;
+  --line: #e6e4de;
+  --card-bg: #ffffff;
+}
+* { box-sizing: border-box; }
+body {
+  margin: 0;
+  font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Helvetica Neue', Arial, sans-serif;
+  background: var(--bg);
+  color: var(--fg);
+  line-height: 1.55;
+  font-size: 15px;
+}
+.wrap { max-width: 820px; margin: 0 auto; padding: 48px 24px 96px; }
+h1 { font-size: 28px; font-weight: 600; margin: 0 0 8px; letter-spacing: -0.01em; }
+.lede { color: var(--muted); margin: 0 0 40px; }
+.card {
+  background: var(--card-bg);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 20px 22px;
+  margin: 0 0 18px;
+}
+.card header {
+  display: flex; gap: 10px; align-items: baseline;
+  font-size: 12px; color: var(--muted); margin-bottom: 12px;
+  flex-wrap: wrap;
+}
+.idx { color: var(--accent); font-weight: 600; letter-spacing: 0.03em; }
+.track, .intent, .role { font-family: 'SF Mono', ui-monospace, monospace; }
+.intent { background: #f0eee8; padding: 1px 8px; border-radius: 4px; }
+.motivation {
+  font-size: 16px;
+  margin: 0 0 16px;
+  color: var(--fg);
+}
+.players { display: flex; gap: 18px; flex-wrap: wrap; }
+.player { flex: 1 1 340px; min-width: 300px; }
+.label {
+  font-size: 11px; color: var(--muted); margin-bottom: 4px;
+  text-transform: uppercase; letter-spacing: 0.08em;
+}
+audio { width: 100%; }
+.toolcalls { margin-top: 12px; font-size: 12px; }
+.toolcalls summary { cursor: pointer; color: var(--muted); }
+.toolcalls code {
+  display: block; font-family: 'SF Mono', ui-monospace, monospace;
+  white-space: pre-wrap; word-break: break-word;
+  padding: 8px 10px; background: #faf9f6; border-radius: 4px;
+  margin-top: 6px; color: #444;
+}
+footer {
+  margin-top: 48px; padding-top: 20px; border-top: 1px solid var(--line);
+  color: var(--muted); font-size: 12px;
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>ProCraft — 10-case audio demo</h1>
+  <p class="lede">
+    Ten BabySlakh tracks, each paired with an LLM-generated production
+    motivation and the resulting modified mix. Every case was produced end-to-end
+    by the ProCraft-Data pipeline: role × abstraction × hook × intent sampling,
+    Qwen3-30B-A3B-Thinking generation, MultiAFX tool execution, and
+    shared-peak-normalized stereo rendering at 48&nbsp;kHz.
+  </p>
+  
+<section class="card">
+  <header>
+    <span class="idx">Case 01</span>
+    <span class="track">Track00001</span>
+    <span class="intent">arrangement_add</span>
+    <span class="role">non_musician_client</span>
+  </header>
+  <p class="motivation">Production motivation: This mix sounds too synthetic and cold—adding the bright acoustic piano will warm it up and avoid anything that sounds obviously digital.</p>
+  <div class="players">
+    <div class="player">
+      <div class="label">Original</div>
+      <audio controls preload="none" src="audio/case_01_Track00001_original.mp3"></audio>
+    </div>
+    <div class="player">
+      <div class="label">Modified</div>
+      <audio controls preload="none" src="audio/case_01_Track00001_modified.mp3"></audio>
+    </div>
+  </div>
+  <details class="toolcalls">
+    <summary>tool_calls (5)</summary>
+    <code>add_track(piano, {&quot;program&quot;:1})<br>apply_fx(piano, sox_overdrive, {&quot;gain_db&quot;:25.0})<br>apply_fx(piano, sox_reverb, {&quot;reverberance&quot;:70.0,&quot;wet_gain&quot;:-1.0})<br>apply_fx(piano, npy_stereo_widener, {&quot;width&quot;:1.6})<br>apply_fx(piano, am_bit_crush, {&quot;bit_depth&quot;:8.0})</code>
+  </details>
+</section>
+
+<section class="card">
+  <header>
+    <span class="idx">Case 02</span>
+    <span class="track">Track00002</span>
+    <span class="intent">arrangement_remove</span>
+    <span class="role">film_tv_music_supervisor</span>
+  </header>
+  <p class="motivation">Production motivation: Removing the synth strings 1 track cuts the muddy clutter so the pad and lead can breathe like looking through a screen door at a party.</p>
+  <div class="players">
+    <div class="player">
+      <div class="label">Original</div>
+      <audio controls preload="none" src="audio/case_02_Track00002_original.mp3"></audio>
+    </div>
+    <div class="player">
+      <div class="label">Modified</div>
+      <audio controls preload="none" src="audio/case_02_Track00002_modified.mp3"></audio>
+    </div>
+  </div>
+  <details class="toolcalls">
+    <summary>tool_calls (7)</summary>
+    <code>remove_track(strings__continued_1, {})<br>apply_fx(synth_pad, am_peaking_filter, {&quot;center_freq&quot;:500.0,&quot;gain_db&quot;:-10.0,&quot;q&quot;:1.5})<br>apply_fx(synth_lead, am_bandpass_filter, {&quot;center_freq&quot;:1200.0,&quot;bandwidth_fraction&quot;:1.2,&quot;rolloff&quot;:12.0})<br>apply_fx(bass, am_highpass_filter, {&quot;cutoff_freq&quot;:80.0,&quot;rolloff&quot;:12.0})<br>double_track(synth_lead, {&quot;offset_ms&quot;:15.0,&quot;detune_cents&quot;:10.0})<br>apply_fx(mix, sox_reverb, {&quot;reverberance&quot;:65.0,&quot;high_freq_damping&quot;:70.0,&quot;room_scale&quot;:85.0,&quot;stereo_depth&quot;:50.0,&quot;pre_delay&quot;:30.0,&quot;wet_gain&quot;:-2.0})<br>apply_fx(piano, am_gain, {&quot;gain_db&quot;:3.0})</code>
+  </details>
+</section>
+
+<section class="card">
+  <header>
+    <span class="idx">Case 03</span>
+    <span class="track">Track00003</span>
+    <span class="intent">performance_velocity</span>
+    <span class="role">non_musician_client</span>
+  </header>
+  <p class="motivation">Production motivation: Don&#x27;t let the electric guitar feel like it&#x27;s always the spotlight moment—keep it from sounding too clean, even when the texture tries to grab attention.</p>
+  <div class="players">
+    <div class="player">
+      <div class="label">Original</div>
+      <audio controls preload="none" src="audio/case_03_Track00003_original.mp3"></audio>
+    </div>
+    <div class="player">
+      <div class="label">Modified</div>
+      <audio controls preload="none" src="audio/case_03_Track00003_modified.mp3"></audio>
+    </div>
+  </div>
+  <details class="toolcalls">
+    <summary>tool_calls (4)</summary>
+    <code>change_velocity(guitar_3, {&quot;scale_factor&quot;:0.7})<br>layer_instrument(guitar_3, {&quot;additional_program&quot;:27,&quot;mix_ratio&quot;:0.3})<br>apply_fx(guitar_3, sox_tremolo, {&quot;speed&quot;:3.5,&quot;depth&quot;:65})<br>apply_fx(guitar_3, am_bit_crush, {&quot;bit_depth&quot;:8.0})</code>
+  </details>
+</section>
+
+<section class="card">
+  <header>
+    <span class="idx">Case 04</span>
+    <span class="track">Track00004</span>
+    <span class="intent">arrangement_add</span>
+    <span class="role">session_keyboardist</span>
+  </header>
+  <p class="motivation">Production motivation: The electric bass needs to lock with the drums like Larry Heard&#x27;s Mr. Fingers — that deep, warm Chicago house groove can&#x27;t breathe without its foundation.</p>
+  <div class="players">
+    <div class="player">
+      <div class="label">Original</div>
+      <audio controls preload="none" src="audio/case_04_Track00004_original.mp3"></audio>
+    </div>
+    <div class="player">
+      <div class="label">Modified</div>
+      <audio controls preload="none" src="audio/case_04_Track00004_modified.mp3"></audio>
+    </div>
+  </div>
+  <details class="toolcalls">
+    <summary>tool_calls (6)</summary>
+    <code>add_track(bass, {&quot;program&quot;:33})<br>apply_fx(synth_pad, am_lowpass_filter, {&quot;cutoff_freq&quot;:1200.0,&quot;rolloff&quot;:24.0})<br>apply_fx(organ, am_highpass_filter, {&quot;cutoff_freq&quot;:200.0,&quot;rolloff&quot;:12.0})<br>apply_fx(drums, am_gain, {&quot;gain_db&quot;:3.0})<br>apply_fx(guitar, am_highpass_filter, {&quot;cutoff_freq&quot;:200.0,&quot;rolloff&quot;:12.0})<br>apply_fx(bass, sox_reverb, {&quot;reverberance&quot;:65,&quot;high_freq_damping&quot;:70,&quot;room_scale&quot;:80,&quot;stereo_depth&quot;:80,&quot;pre_delay&quot;:10,&quot;wet_gain&quot;:-2.0})</code>
+  </details>
+</section>
+
+<section class="card">
+  <header>
+    <span class="idx">Case 05</span>
+    <span class="track">Track00005</span>
+    <span class="intent">effects</span>
+    <span class="role">non_musician_client</span>
+  </header>
+  <p class="motivation">Production motivation: It&#x27;s missing that warm, roomy feel like the drums and bass in A Tribe Called Quest&#x27;s Low End Theory — the bass is too tight, and the drums feel like they&#x27;re in a box.</p>
+  <div class="players">
+    <div class="player">
+      <div class="label">Original</div>
+      <audio controls preload="none" src="audio/case_05_Track00005_original.mp3"></audio>
+    </div>
+    <div class="player">
+      <div class="label">Modified</div>
+      <audio controls preload="none" src="audio/case_05_Track00005_modified.mp3"></audio>
+    </div>
+  </div>
+  <details class="toolcalls">
+    <summary>tool_calls (4)</summary>
+    <code>apply_fx(bass, sox_overdrive, {&quot;gain_db&quot;:25})<br>change_instrument(bass, {&quot;from_program&quot;:33,&quot;to_program&quot;:35})<br>apply_fx(mix, sox_reverb, {&quot;reverberance&quot;:65,&quot;wet_gain&quot;:-2})<br>apply_fx(guitar_1, am_highpass_filter, {&quot;cutoff_freq&quot;:150,&quot;rolloff&quot;:12})</code>
+  </details>
+</section>
+
+<section class="card">
+  <header>
+    <span class="idx">Case 06</span>
+    <span class="track">Track00006</span>
+    <span class="intent">performance_timing</span>
+    <span class="role">mastering_engineer</span>
+  </header>
+  <p class="motivation">Production motivation: The second string ensemble 1&#x27;s timing is sterile; don&#x27;t let compression wash out the groove by applying 20ms humanization to the second string ensemble 1.</p>
+  <div class="players">
+    <div class="player">
+      <div class="label">Original</div>
+      <audio controls preload="none" src="audio/case_06_Track00006_original.mp3"></audio>
+    </div>
+    <div class="player">
+      <div class="label">Modified</div>
+      <audio controls preload="none" src="audio/case_06_Track00006_modified.mp3"></audio>
+    </div>
+  </div>
+  <details class="toolcalls">
+    <summary>tool_calls (7)</summary>
+    <code>humanize_timing(strings__continued_2, {&quot;max_offset_ms&quot;:20.0})<br>apply_fx(mix, am_loudness_normalization, {&quot;lufs&quot;:-14.0})<br>apply_fx(mix, am_highpass_filter, {&quot;cutoff_freq&quot;:100.0,&quot;rolloff&quot;:12.0})<br>apply_fx(mix, sox_reverb, {&quot;reverberance&quot;:65.0,&quot;high_freq_damping&quot;:50.0,&quot;room_scale&quot;:70.0,&quot;stereo_depth&quot;:85.0,&quot;pre_delay&quot;:15.0,&quot;wet_gain&quot;:-2.0})<br>apply_fx(drums, sox_overdrive, {&quot;gain_db&quot;:25.0})<br>apply_fx(mix, npy_stereo_widener, {&quot;width&quot;:1.7})<br>apply_fx(mix, sox_compand, {&quot;attack_time&quot;:0.01,&quot;decay_time&quot;:0.1,&quot;soft_knee_db&quot;:5.0})</code>
+  </details>
+</section>
+
+<section class="card">
+  <header>
+    <span class="idx">Case 07</span>
+    <span class="track">Track00007</span>
+    <span class="intent">instrument_swap</span>
+    <span class="role">mixing_engineer_self_note</span>
+  </header>
+  <p class="motivation">Production motivation: The choir aahs felt sterile and present; swapping to Synth Choir (GM60) gives us that dreamy and unhurried, half-asleep in a moving train atmosphere we need.</p>
+  <div class="players">
+    <div class="player">
+      <div class="label">Original</div>
+      <audio controls preload="none" src="audio/case_07_Track00007_original.mp3"></audio>
+    </div>
+    <div class="player">
+      <div class="label">Modified</div>
+      <audio controls preload="none" src="audio/case_07_Track00007_modified.mp3"></audio>
+    </div>
+  </div>
+  <details class="toolcalls">
+    <summary>tool_calls (6)</summary>
+    <code>change_instrument(strings__continued, {&quot;from_program&quot;:52,&quot;to_program&quot;:60})<br>apply_fx(strings__continued, sox_reverb, {&quot;reverberance&quot;:65.0,&quot;high_freq_damping&quot;:75.0,&quot;room_scale&quot;:60.0,&quot;stereo_depth&quot;:80.0,&quot;wet_gain&quot;:-1.5})<br>apply_fx(bass, am_highpass_filter, {&quot;cutoff_freq&quot;:40.0,&quot;rolloff&quot;:12.0})<br>apply_fx(strings__continued, npy_stereo_widener, {&quot;width&quot;:1.6})<br>apply_fx(piano_1, am_lowpass_filter, {&quot;cutoff_freq&quot;:7500.0,&quot;rolloff&quot;:12.0})<br>change_velocity(piano_1, {&quot;scale_factor&quot;:0.8})</code>
+  </details>
+</section>
+
+<section class="card">
+  <header>
+    <span class="idx">Case 08</span>
+    <span class="track">Track00008</span>
+    <span class="intent">arrangement_add</span>
+    <span class="role">producer</span>
+  </header>
+  <p class="motivation">Production motivation: introducing the unadorned and simple, bread and butter warmth of the acoustic grand piano to ground the electric piano&#x27;s brightness and keep the mix intimate.</p>
+  <div class="players">
+    <div class="player">
+      <div class="label">Original</div>
+      <audio controls preload="none" src="audio/case_08_Track00008_original.mp3"></audio>
+    </div>
+    <div class="player">
+      <div class="label">Modified</div>
+      <audio controls preload="none" src="audio/case_08_Track00008_modified.mp3"></audio>
+    </div>
+  </div>
+  <details class="toolcalls">
+    <summary>tool_calls (4)</summary>
+    <code>add_track(piano_2, {&quot;program&quot;:0})<br>apply_fx(synth_pad, am_highpass_filter, {&quot;cutoff_freq&quot;:200.0,&quot;rolloff&quot;:12.0})<br>apply_fx(guitar, am_peaking_filter, {&quot;center_freq&quot;:2500.0,&quot;gain_db&quot;:4.0,&quot;q&quot;:0.7})<br>apply_fx(piano_2, am_low_shelf_filter, {&quot;center_freq&quot;:150.0,&quot;gain_db&quot;:3.0,&quot;q&quot;:0.7})</code>
+  </details>
+</section>
+
+<section class="card">
+  <header>
+    <span class="idx">Case 09</span>
+    <span class="track">Track00009</span>
+    <span class="intent">performance_articulation</span>
+    <span class="role">producer</span>
+  </header>
+  <p class="motivation">Production motivation: The oboe&#x27;s staccato notes feel like fireworks heard from indoors—smooth them to legato for a breathy, seamless flow that melts into the choir pads like a quiet conversation in a moonlit room.</p>
+  <div class="players">
+    <div class="player">
+      <div class="label">Original</div>
+      <audio controls preload="none" src="audio/case_09_Track00009_original.mp3"></audio>
+    </div>
+    <div class="player">
+      <div class="label">Modified</div>
+      <audio controls preload="none" src="audio/case_09_Track00009_modified.mp3"></audio>
+    </div>
+  </div>
+  <details class="toolcalls">
+    <summary>tool_calls (6)</summary>
+    <code>change_articulation(reed, {&quot;style&quot;:&quot;legato&quot;})<br>remove_track(chromatic_percussion_3, {})<br>change_instrument(bass, {&quot;from_program&quot;:33,&quot;to_program&quot;:35})<br>apply_fx(reed, am_lowpass_filter, {&quot;cutoff_freq&quot;:3000.0,&quot;rolloff&quot;:12.0})<br>apply_fx(strings__continued_1, am_gain, {&quot;gain_db&quot;:3.0})<br>apply_fx(mix, sox_reverb, {&quot;reverberance&quot;:65.0,&quot;high_freq_damping&quot;:70.0,&quot;room_scale&quot;:80.0,&quot;stereo_depth&quot;:75.0,&quot;pre_delay&quot;:10.0,&quot;wet_gain&quot;:-2.0})</code>
+  </details>
+</section>
+
+<section class="card">
+  <header>
+    <span class="idx">Case 10</span>
+    <span class="track">Track00010</span>
+    <span class="intent">effects</span>
+    <span class="role">session_drummer</span>
+  </header>
+  <p class="motivation">Production motivation: Drums feel dry—set sox_reverb reverberance=75, pre_delay=10ms, wet_gain=-1dB to emulate spring reverb&#x27;s 700ms decay without masking kick/snare.</p>
+  <div class="players">
+    <div class="player">
+      <div class="label">Original</div>
+      <audio controls preload="none" src="audio/case_10_Track00010_original.mp3"></audio>
+    </div>
+    <div class="player">
+      <div class="label">Modified</div>
+      <audio controls preload="none" src="audio/case_10_Track00010_modified.mp3"></audio>
+    </div>
+  </div>
+  <details class="toolcalls">
+    <summary>tool_calls (5)</summary>
+    <code>apply_fx(drums, sox_reverb, {&quot;reverberance&quot;:75,&quot;high_freq_damping&quot;:70,&quot;room_scale&quot;:80,&quot;stereo_depth&quot;:90,&quot;pre_delay&quot;:10,&quot;wet_gain&quot;:-1.0})<br>apply_fx(drums, sox_overdrive, {&quot;gain_db&quot;:25,&quot;colour&quot;:50})<br>apply_fx(guitar_1, am_highpass_filter, {&quot;cutoff_freq&quot;:200,&quot;rolloff&quot;:12})<br>apply_fx(bass, am_highpass_filter, {&quot;cutoff_freq&quot;:80,&quot;rolloff&quot;:12})<br>apply_fx(synth_pad_2, am_lowpass_filter, {&quot;cutoff_freq&quot;:3000,&quot;rolloff&quot;:18})</code>
+  </details>
+</section>
+
+  <footer>
+    30&nbsp;s center-cropped clips. Audio compressed to 192&nbsp;kbps MP3 for loading speed.
+  </footer>
+</div>
+</body>
+</html>

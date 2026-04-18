@@ -78,11 +78,15 @@ a compatible argument. For `arrangement_add`, `generate_one` withholds the
 chosen track from the MixtureState before rendering so the metadata
 advertises it as `available_to_add`.
 
-### 3.3 Empty-motivation detection
-If `tr.motivation_text.strip()` is empty after parsing (rare ~10% failure
-mode on long `<think>` spans — model dumps tool_calls without the
-"Production motivation:" line), the entry is marked `executed_ok = False`
-with a readable error message. Downstream quality filter will drop it.
+### 3.3 Retry on empty motivation / missing primary tool
+`generate_one` wraps the LLM call in a bounded retry loop (default 3
+retries). An attempt is considered invalid if the motivation line is empty
+OR the pre-committed primary tool isn't emitted. On failure, we re-call
+the LLM with the same prompt (LLM sampling noise gives us a different
+output). `attempt_count` and `retry_reasons` are recorded on every
+DatasetEntry. If all retries are exhausted, the last response is saved
+with `executed_ok = False` and the reason logged; the downstream quality
+filter drops such entries.
 
 ### 3.4 Contradiction handling
 - **Method 1 (hard compatibility matrix)** — `Role.forbidden_abstractions`
