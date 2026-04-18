@@ -5,8 +5,8 @@ motivation per track (different role/abstraction/hook/intent each),
 generates the original + modified audio pair, transcodes both WAVs to
 MP3, and emits a static HTML page with all 10 cases.
 
-Output lives under ``demo/`` in the repo root so it can be committed
-and served from GitHub Pages.
+Output lives under ``docs/`` in the repo root — GitHub Pages only
+supports ``/`` or ``/docs`` as a source folder.
 
 Prereqs:
 - vLLM server running on http://127.0.0.1:8765
@@ -268,7 +268,7 @@ footer {
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--slakh-root", default=str(paths.RAW_SLAKH / "babyslakh_16k"))
-    ap.add_argument("--out-dir", default=str(Path(__file__).resolve().parents[1] / "demo"))
+    ap.add_argument("--out-dir", default=str(Path(__file__).resolve().parents[1] / "docs"))
     ap.add_argument("--server", default="http://127.0.0.1:8765/v1")
     ap.add_argument("--model",
                     default="cpatonn/Qwen3-30B-A3B-Thinking-2507-AWQ-4bit")
