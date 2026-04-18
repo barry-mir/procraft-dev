@@ -108,20 +108,51 @@ SPATIAL: npy_stereo_widener, npy_lr_pan, sox_oops (mid-side trick)
 DESTRUCTIVE: am_add_gaussian_noise / am_add_color_noise (tape hiss / vinyl),
   am_bit_crush, am_polarity_inversion
 
-EFFECT STRENGTH — USE THESE RANGES, not timid values. A production decision
-must be clearly HEARD, not inferred:
-  - EQ cut/boost: -8 to -15 dB for real masking/clearing; +4 to +8 dB for
-    presence boosts. 1-2 dB nudges are wasted.
-  - Compression (sox_compand): 6-10 dB gain reduction — attack 5-15 ms,
-    decay 50-200 ms, soft_knee 3-6 dB. Not "tickling 1-2 dB".
-  - Reverb (sox_reverb): reverberance 50-85, wet_gain -3 to 0 dB.
-  - Distortion: sox_overdrive gain_db 20-35, am_tanh_distortion 0.35-0.6,
-    am_bit_crush bit_depth 6-10 for clear lo-fi character.
-  - Stereo widener: width 1.4-1.9 (NOT 1.0 — that's a no-op).
-  - Gain / volume: -8 to +8 dB is fair game when rebalancing.
-  - Humanize: max_offset_ms 15-30 for an audible feel shift.
-  - Velocity scale: 0.55-1.45 for a clear dynamic change.
-If a value feels timid, push it further.
+EFFECT STRENGTH — pick values by INTENT, not by "always push it further".
+Choose light / medium / strong based on what the motivation calls for:
+  - EQ cut/boost
+      light:  ±2-4 dB    (subtle tilt)
+      medium: ±5-9 dB    (clear shaping)
+      strong: ±10-15 dB  (aggressive carve / clearing mud)
+  - Compression (sox_compand)
+      light:  1-3 dB GR with soft_knee 3-6 dB (glue)
+      medium: 4-6 dB GR, attack 5-15 ms, decay 50-150 ms (tighten drums)
+      strong: 6-10 dB GR, fast attack (punchy, pumping)
+  - Reverb (sox_reverb)
+      light:  reverberance 20-40, wet_gain -8 to -5 dB (hint of room)
+      medium: reverberance 40-65, wet_gain -5 to -2 dB (audible space)
+      strong: reverberance 65-85, wet_gain -2 to 0 dB (drenched / dreamy)
+  - sox_overdrive gain_db
+      light:  5-10 dB    (tube warmth, mix glue)
+      medium: 10-18 dB   (clear drive, guitar-amp character)
+      strong: 18-30 dB   (crunchy grit — use only when the brief says so)
+      Avoid 30+ dB unless the motivation explicitly asks for fuzz/metal.
+  - am_tanh_distortion
+      light:  0.05-0.12  (barely saturated warmth)
+      medium: 0.15-0.25  (soft-clip character)
+      strong: 0.25-0.40  (aggressive saturation)
+      Avoid 0.5+ — output becomes a square wave.
+  - am_bit_crush bit_depth
+      light:  12-14 bits (gentle digital haze)
+      medium: 9-11 bits  (clear lo-fi character)
+      strong: 6-8 bits   (crushed 8-bit aesthetic)
+  - Stereo widener width
+      light:  1.1-1.25  (gentle spread)
+      medium: 1.3-1.5
+      strong: 1.6-1.8   (dramatic spread)
+      Avoid 1.0 (no-op) and 2.0 (mono-collapse risk on sides).
+  - Gain / volume: -8 to +8 dB, pick the magnitude that matches the
+    imbalance you described (don't boost +8 for a minor nudge).
+  - Humanize max_offset_ms
+      light:  5-10 ms   (tight human feel)
+      medium: 10-20 ms  (noticeable groove)
+      strong: 20-30 ms  (loose, drunken swing)
+  - Velocity scale
+      light:  0.85-1.15
+      medium: 0.7-1.3
+      strong: 0.55-1.45
+Match the magnitude to the motivation's vocabulary — "subtle" / "gentle" →
+light; "punchy" / "driven" / "aggressive" → medium or strong.
 
 BOLD MOVES — a real production decision usually stacks multiple changes:
   - Cross-category instrument swaps: piano → Rhodes (GM 4), piano →

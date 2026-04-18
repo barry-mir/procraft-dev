@@ -129,6 +129,39 @@ def _render_html(cases: list[dict]) -> str:
         e = c["entry"]
         orig_rel = c["original_mp3_rel"]
         mod_rel = c["modified_mp3_rel"]
+        # Extract a "what to listen for" hint from the primary tool call.
+        def _listen_hint(entry) -> str:
+            for tc in entry.tool_calls:
+                if tc["name"] != entry.primary_tool:
+                    continue
+                a = tc.get("arguments", {})
+                tgt = a.get("track") or a.get("track_name") or "?"
+                name = entry.primary_tool
+                if name == "add_track":
+                    return f"added: {tgt} (GM {a.get('program','?')})"
+                if name == "remove_track":
+                    return f"removed: {tgt}"
+                if name == "double_track":
+                    return f"doubled: {tgt}"
+                if name == "mute_and_replace":
+                    return f"replaced: {tgt} → GM {a.get('new_program', a.get('program','?'))}"
+                if name == "change_instrument":
+                    fp = a.get("from_program", "?")
+                    tp = a.get("to_program", "?")
+                    return f"swapped: {tgt}  GM {fp} → {tp}"
+                if name == "layer_instrument":
+                    return f"layered: {tgt}  + GM {a.get('additional_program','?')} @ {a.get('mix_ratio','?')}"
+                if name == "change_velocity":
+                    return f"velocity: {tgt} × {a.get('scale_factor','?')}"
+                if name == "humanize_timing":
+                    return f"humanize: {tgt}  ±{a.get('max_offset_ms','?')} ms"
+                if name == "change_articulation":
+                    return f"articulation: {tgt} → {a.get('style','?')}"
+                if name == "apply_fx":
+                    effect = a.get("call", {}).get("effect", "?")
+                    return f"fx: {tgt}  {effect}"
+            return ""
+        hint = _listen_hint(e)
         tool_lines = []
         for tc in e.tool_calls:
             name = tc["name"]
@@ -159,6 +192,7 @@ def _render_html(cases: list[dict]) -> str:
     <span class="role">{html.escape(e.role)}</span>
   </header>
   <p class="motivation">{html.escape(e.motivation)}</p>
+  {f'<p class="hint">listen for → <code>{html.escape(hint)}</code></p>' if hint else ''}
   <div class="players">
     <div class="player">
       <div class="label">Original</div>
@@ -214,8 +248,18 @@ h1 { font-size: 28px; font-weight: 600; margin: 0 0 8px; letter-spacing: -0.01em
 .intent { background: #f0eee8; padding: 1px 8px; border-radius: 4px; }
 .motivation {
   font-size: 16px;
-  margin: 0 0 16px;
+  margin: 0 0 8px;
   color: var(--fg);
+}
+.hint {
+  font-size: 12px; color: var(--muted); margin: 0 0 16px;
+  text-transform: uppercase; letter-spacing: 0.04em;
+}
+.hint code {
+  font-family: 'SF Mono', ui-monospace, monospace;
+  background: #faf9f6; padding: 2px 6px; border-radius: 3px;
+  text-transform: none; letter-spacing: 0;
+  color: var(--accent);
 }
 .players { display: flex; gap: 18px; flex-wrap: wrap; }
 .player { flex: 1 1 340px; min-width: 300px; }

@@ -191,6 +191,9 @@ targets are NOT honored — simplification).
 | 15 | 131 s | `_rewrite_restoration_words` for arrangement_add | 0 audit issues; ready for listening |
 | 16 | 143 s | RMS-match distortion (peak-match was wrong); vocab pools 5-10× | Distortion RMS-match verified in iter 17 |
 | 17 | 153 s | Methods 3 + 6 (role-aware hook filter + conflict resample); empty-motivation flag | 0 audit issues; distortion ratios all 1.000; 1/10 entries had model skip the motivation line → flagged as invalid |
+| 18 | 143 s | Bounded-retry on empty motivation / missing primary tool | 10/10 valid, `attempt_count` recorded per entry |
+| demo | 181 s | 10 tracks × random intent, MP3 transcode, static HTML at `docs/` | Pushed commit `34e6a34`; GitHub Pages-ready |
+| fix | — | User noted `sox_overdrive` cookbook default 20–35 dB was too heavy | Cookbook reworked: EFFECT STRENGTH table now has explicit light / medium / strong ranges per effect, keyed to motivation vocabulary ("subtle" → light, "driven" → medium, "aggressive" → strong) |
 
 ---
 

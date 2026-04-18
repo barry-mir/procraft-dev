@@ -279,14 +279,40 @@ def generate_one(
     start = max(0.0, (longest - duration_sec) / 2.0)
 
     # Honor the pre-committed arrangement_add intent by withholding a track if
-    # the caller didn't already supply one.
+    # the caller didn't already supply one. Prefer note-rich tracks so the
+    # added stem audibly changes the mix. Count notes INSIDE the 30s window
+    # (not the whole-track note count) because a track with 500 total notes
+    # might have only 3 in our window.
     if spec.primary_intent == "arrangement_add" and not withhold_for_add:
         import random as _rnd
+        import pretty_midi as _pm
         from procraft_data.sources.slakh import _dedup_names
         rng = _rnd.Random(hash((track.track_id, entry_idx)))
-        candidates = list(_dedup_names(list(track.stems.values())).values())
-        if len(candidates) >= 3:
-            withhold_for_add = [rng.choice(candidates)]
+        name_by_sid = _dedup_names(list(track.stems.values()))
+
+        # Count notes per stem in the window.
+        note_counts: list[tuple[str, int]] = []
+        for sid, name in name_by_sid.items():
+            try:
+                midi = _pm.PrettyMIDI(str(track.midi_path(sid)))
+                instr = midi.instruments[0] if midi.instruments else None
+                if instr is None:
+                    continue
+                n = sum(1 for note in instr.notes
+                        if note.end > start and note.start < start + duration_sec)
+                note_counts.append((name, n))
+            except Exception:
+                continue
+
+        if len(note_counts) >= 3:
+            # Keep candidates with above-median note count; this biases toward
+            # tracks that actually contribute material in the window.
+            sorted_by_notes = sorted(note_counts, key=lambda x: x[1], reverse=True)
+            top_half = sorted_by_notes[: max(3, len(sorted_by_notes) // 2)]
+            # Guard against tiny-note-count trivial picks.
+            top_half = [(n, c) for (n, c) in top_half if c >= 6] or top_half
+            pick_name, _ = rng.choice(top_half)
+            withhold_for_add = [pick_name]
 
     state = build_mixture_state(
         track, sample_rate, start, duration_sec,
