@@ -231,6 +231,9 @@ body {
 .wrap { max-width: 820px; margin: 0 auto; padding: 48px 24px 96px; }
 h1 { font-size: 28px; font-weight: 600; margin: 0 0 8px; letter-spacing: -0.01em; }
 .lede { color: var(--muted); margin: 0 0 40px; }
+.nav { margin: 0 0 24px; }
+.nav a { color: var(--accent); text-decoration: none; font-size: 13px; border-bottom: 1px solid var(--accent); padding-bottom: 1px; }
+.nav a:hover { opacity: 0.7; }
 .card {
   background: var(--card-bg);
   border: 1px solid var(--line);
@@ -292,6 +295,7 @@ footer {
 <body>
 <div class="wrap">
   <h1>ProCraft — 10-case audio demo</h1>
+  <p class="nav"><a href="soundfonts/">A/B compare soundfonts →</a></p>
   <p class="lede">
     Ten BabySlakh tracks, each paired with an LLM-generated production
     motivation and the resulting modified mix. Every case was produced end-to-end

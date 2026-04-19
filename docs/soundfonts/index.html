@@ -1,0 +1,227 @@
+<!doctype html>
+<html lang="en"><head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ProCraft — Soundfont Comparison</title>
+<style>
+:root {
+  --bg: #fbfaf7; --fg: #1b1b1b; --muted: #7a7a7a;
+  --accent: #b94f1f; --line: #e6e4de; --card: #fff;
+  --tier-a: #2e7d32; --tier-b: #e17a00;
+}
+* { box-sizing: border-box; }
+body {
+  margin: 0;
+  font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Helvetica Neue', Arial, sans-serif;
+  background: var(--bg); color: var(--fg);
+  line-height: 1.55; font-size: 15px;
+}
+.wrap { max-width: 780px; margin: 0 auto; padding: 48px 24px 96px; }
+h1 { font-size: 26px; font-weight: 600; margin: 0 0 8px; letter-spacing: -0.01em; }
+.lede { color: var(--muted); margin: 0 0 32px; }
+.card {
+  background: var(--card); border: 1px solid var(--line);
+  border-radius: 10px; padding: 16px 20px; margin: 0 0 12px;
+}
+.card header {
+  display: flex; gap: 12px; align-items: baseline; flex-wrap: wrap;
+  margin-bottom: 10px;
+}
+.idx { color: var(--accent); font-weight: 600; font-size: 13px; }
+.name { font-weight: 600; flex: 1; }
+.size, .license { color: var(--muted); font-size: 12px; font-family: 'SF Mono', ui-monospace, monospace; }
+.tier {
+  font-size: 10px; text-transform: uppercase; letter-spacing: 0.1em;
+  padding: 2px 8px; border-radius: 3px; font-weight: 600;
+}
+.tier-a { background: #e7f2e8; color: var(--tier-a); }
+.tier-b { background: #fdf1de; color: var(--tier-b); }
+audio { width: 100%; }
+.filename { margin: 8px 0 0; }
+.filename code {
+  font-size: 11px; color: var(--muted);
+  font-family: 'SF Mono', ui-monospace, monospace;
+}
+.back {
+  display: inline-block; margin-bottom: 24px; color: var(--muted);
+  text-decoration: none; font-size: 13px;
+}
+.back:hover { color: var(--accent); }
+footer {
+  margin-top: 48px; padding-top: 20px; border-top: 1px solid var(--line);
+  color: var(--muted); font-size: 12px;
+}
+</style>
+</head><body>
+<div class="wrap">
+  <a class="back" href="../">&larr; back to 10-case demo</a>
+  <h1>Soundfont comparison</h1>
+  <p class="lede">
+    Same Slakh reference track (Track00001, 30&nbsp;s center-cropped,
+    same mixing / peak-normalize pipeline) rendered with each soundfont. A/B
+    by ear to pick which one(s) the main dataset should use. Tier A = clean
+    redistribution license; Tier B = freeware / mixed-source (OK for internal
+    rendering, check before public release).
+  </p>
+  
+<section class="card">
+  <header>
+    <span class="idx">01</span>
+    <span class="name">TimGM6mb (tiny)</span>
+    <span class="size">5.7 MB</span>
+    <span class="tier tier-a">tier A</span>
+    <span class="license">GPL</span>
+  </header>
+  <audio controls preload="none" src="audio/TimGM6mb.mp3"></audio>
+  <p class="filename"><code>TimGM6mb.sf2</code></p>
+</section>
+
+<section class="card">
+  <header>
+    <span class="idx">02</span>
+    <span class="name">Debian fluid-soundfont-gm</span>
+    <span class="size">5.7 MB</span>
+    <span class="tier tier-a">tier A</span>
+    <span class="license">MIT (FluidR3 mirror)</span>
+  </header>
+  <audio controls preload="none" src="audio/default-GM.mp3"></audio>
+  <p class="filename"><code>default-GM.sf2</code></p>
+</section>
+
+<section class="card">
+  <header>
+    <span class="idx">03</span>
+    <span class="name">Unison</span>
+    <span class="size">27.9 MB</span>
+    <span class="tier tier-a">tier A</span>
+    <span class="license">CC0</span>
+  </header>
+  <audio controls preload="none" src="audio/Unison.mp3"></audio>
+  <p class="filename"><code>Unison.sf2</code></p>
+</section>
+
+<section class="card">
+  <header>
+    <span class="idx">04</span>
+    <span class="name">GeneralUser GS 1.471</span>
+    <span class="size">29.8 MB</span>
+    <span class="tier tier-a">tier A</span>
+    <span class="license">Permissive</span>
+  </header>
+  <audio controls preload="none" src="audio/GeneralUser-GS-v1.471.mp3"></audio>
+  <p class="filename"><code>GeneralUser-GS-v1.471.sf2</code></p>
+</section>
+
+<section class="card">
+  <header>
+    <span class="idx">05</span>
+    <span class="name">Jnsgm2</span>
+    <span class="size">31.7 MB</span>
+    <span class="tier tier-a">tier A</span>
+    <span class="license">CC0</span>
+  </header>
+  <audio controls preload="none" src="audio/Jnsgm2.mp3"></audio>
+  <p class="filename"><code>Jnsgm2.sf2</code></p>
+</section>
+
+<section class="card">
+  <header>
+    <span class="idx">06</span>
+    <span class="name">FluidR3_GM (current default)</span>
+    <span class="size">141.5 MB</span>
+    <span class="tier tier-a">tier A</span>
+    <span class="license">MIT</span>
+  </header>
+  <audio controls preload="none" src="audio/FluidR3_GM.mp3"></audio>
+  <p class="filename"><code>FluidR3_GM.sf2</code></p>
+</section>
+
+<section class="card">
+  <header>
+    <span class="idx">07</span>
+    <span class="name">MuseScore_General 0.2</span>
+    <span class="size">205.6 MB</span>
+    <span class="tier tier-a">tier A</span>
+    <span class="license">MIT</span>
+  </header>
+  <audio controls preload="none" src="audio/MuseScore_General.mp3"></audio>
+  <p class="filename"><code>MuseScore_General.sf2</code></p>
+</section>
+
+<section class="card">
+  <header>
+    <span class="idx">08</span>
+    <span class="name">SGM v2.01</span>
+    <span class="size">235.9 MB</span>
+    <span class="tier tier-a">tier A</span>
+    <span class="license">CC-BY 3.0</span>
+  </header>
+  <audio controls preload="none" src="audio/SGM-v2.01.mp3"></audio>
+  <p class="filename"><code>SGM-v2.01.sf2</code></p>
+</section>
+
+<section class="card">
+  <header>
+    <span class="idx">09</span>
+    <span class="name">Airfont 380 Final</span>
+    <span class="size">263.1 MB</span>
+    <span class="tier tier-a">tier A</span>
+    <span class="license">Public Domain</span>
+  </header>
+  <audio controls preload="none" src="audio/airfont_380.mp3"></audio>
+  <p class="filename"><code>airfont_380.sf2</code></p>
+</section>
+
+<section class="card">
+  <header>
+    <span class="idx">10</span>
+    <span class="name">MagicSFver2</span>
+    <span class="size">67.9 MB</span>
+    <span class="tier tier-b">tier B</span>
+    <span class="license">Freeware</span>
+  </header>
+  <audio controls preload="none" src="audio/MagicSF.mp3"></audio>
+  <p class="filename"><code>MagicSF.sf2</code></p>
+</section>
+
+<section class="card">
+  <header>
+    <span class="idx">11</span>
+    <span class="name">OPL-3 FM 128M (SB16)</span>
+    <span class="size">128.8 MB</span>
+    <span class="tier tier-b">tier B</span>
+    <span class="license">Freeware</span>
+  </header>
+  <audio controls preload="none" src="audio/OPL3-FM.mp3"></audio>
+  <p class="filename"><code>OPL3-FM.sf2</code></p>
+</section>
+
+<section class="card">
+  <header>
+    <span class="idx">12</span>
+    <span class="name">Arachno 1.0</span>
+    <span class="size">148.2 MB</span>
+    <span class="tier tier-b">tier B</span>
+    <span class="license">Freeware</span>
+  </header>
+  <audio controls preload="none" src="audio/Arachno.mp3"></audio>
+  <p class="filename"><code>Arachno.sf2</code></p>
+</section>
+
+<section class="card">
+  <header>
+    <span class="idx">13</span>
+    <span class="name">Musyng Kite (1 GB composite)</span>
+    <span class="size">1020.6 MB</span>
+    <span class="tier tier-b">tier B</span>
+    <span class="license">WTFPL*</span>
+  </header>
+  <audio controls preload="none" src="audio/Musyng-Kite.mp3"></audio>
+  <p class="filename"><code>Musyng-Kite.sf2</code></p>
+</section>
+
+  <footer>
+    13 soundfonts · 48&nbsp;kHz stereo · 192&nbsp;kbps MP3
+  </footer>
+</div>
+</body></html>

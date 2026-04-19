@@ -1,0 +1,106 @@
+[
+  {
+    "filename": "TimGM6mb.sf2",
+    "display": "TimGM6mb (tiny)",
+    "license": "GPL",
+    "tier": "A",
+    "size_bytes": 5969788,
+    "mp3_rel": "audio/TimGM6mb.mp3"
+  },
+  {
+    "filename": "default-GM.sf2",
+    "display": "Debian fluid-soundfont-gm",
+    "license": "MIT (FluidR3 mirror)",
+    "tier": "A",
+    "size_bytes": 5969788,
+    "mp3_rel": "audio/default-GM.mp3"
+  },
+  {
+    "filename": "Unison.sf2",
+    "display": "Unison",
+    "license": "CC0",
+    "tier": "A",
+    "size_bytes": 29258148,
+    "mp3_rel": "audio/Unison.mp3"
+  },
+  {
+    "filename": "GeneralUser-GS-v1.471.sf2",
+    "display": "GeneralUser GS 1.471",
+    "license": "Permissive",
+    "tier": "A",
+    "size_bytes": 31281186,
+    "mp3_rel": "audio/GeneralUser-GS-v1.471.mp3"
+  },
+  {
+    "filename": "Jnsgm2.sf2",
+    "display": "Jnsgm2",
+    "license": "CC0",
+    "tier": "A",
+    "size_bytes": 33187490,
+    "mp3_rel": "audio/Jnsgm2.mp3"
+  },
+  {
+    "filename": "FluidR3_GM.sf2",
+    "display": "FluidR3_GM (current default)",
+    "license": "MIT",
+    "tier": "A",
+    "size_bytes": 148398306,
+    "mp3_rel": "audio/FluidR3_GM.mp3"
+  },
+  {
+    "filename": "MuseScore_General.sf2",
+    "display": "MuseScore_General 0.2",
+    "license": "MIT",
+    "tier": "A",
+    "size_bytes": 215614036,
+    "mp3_rel": "audio/MuseScore_General.mp3"
+  },
+  {
+    "filename": "SGM-v2.01.sf2",
+    "display": "SGM v2.01",
+    "license": "CC-BY 3.0",
+    "tier": "A",
+    "size_bytes": 247406594,
+    "mp3_rel": "audio/SGM-v2.01.mp3"
+  },
+  {
+    "filename": "airfont_380.sf2",
+    "display": "Airfont 380 Final",
+    "license": "Public Domain",
+    "tier": "A",
+    "size_bytes": 275887780,
+    "mp3_rel": "audio/airfont_380.mp3"
+  },
+  {
+    "filename": "MagicSF.sf2",
+    "display": "MagicSFver2",
+    "license": "Freeware",
+    "tier": "B",
+    "size_bytes": 71183704,
+    "mp3_rel": "audio/MagicSF.mp3"
+  },
+  {
+    "filename": "OPL3-FM.sf2",
+    "display": "OPL-3 FM 128M (SB16)",
+    "license": "Freeware",
+    "tier": "B",
+    "size_bytes": 135020964,
+    "mp3_rel": "audio/OPL3-FM.mp3"
+  },
+  {
+    "filename": "Arachno.sf2",
+    "display": "Arachno 1.0",
+    "license": "Freeware",
+    "tier": "B",
+    "size_bytes": 155405818,
+    "mp3_rel": "audio/Arachno.mp3"
+  },
+  {
+    "filename": "Musyng-Kite.sf2",
+    "display": "Musyng Kite (1 GB composite)",
+    "license": "WTFPL*",
+    "tier": "B",
+    "size_bytes": 1070141704,
+    "mp3_rel": "audio/Musyng-Kite.mp3"
+  }
+]
