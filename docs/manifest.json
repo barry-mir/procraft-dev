@@ -1,36 +1,58 @@
 [
   {
-    "track_id": "Track00001",
-    "role": "session_keyboardist",
-    "abstraction_level": "negative_space",
-    "hook": "avoid anything that sounds obviously digital",
-    "primary_intent": "arrangement_remove",
-    "primary_tool": "remove_track",
-    "target_track": "guitar_3, guitar_1, organ_1, guitar_2",
-    "motivation": "Production motivation: Remove the second distortion guitar, the first distortion guitar, the percussive organ, and the electric guitar to avoid anything that sounds obviously digital and let the choir aahs and piano breathe without midrange collision.",
+    "track_id": "Track00016",
+    "role": "mastering_engineer",
+    "abstraction_level": "technical_parametric",
+    "hook": "tilt EQ +1.5 dB above 3 kHz for modern pop brightness",
+    "primary_intent": "arrangement_mute_replace",
+    "primary_tool": "mute_and_replace",
+    "target_track": "pipe",
+    "motivation": "Production motivation: Replace the flute (Flute) with Church Organ (GM 2) to enable +1.5dB tilt at 3.2kHz for platform-bright modern pop, while boosting the overdriven guitar's midrange with peaking EQ and adding medium-width stereo image to the first electric guitar.",
     "tool_calls": [
       {
-        "name": "remove_track",
+        "name": "mute_and_replace",
         "arguments": {
-          "track": "guitar_3"
+          "track_name": "pipe",
+          "new_program": 2
         }
       },
       {
-        "name": "remove_track",
+        "name": "apply_fx",
         "arguments": {
-          "track": "guitar_1"
+          "track": "guitar_1",
+          "call": {
+            "effect": "am_peaking_filter",
+            "params": {
+              "center_freq": 3200.0,
+              "gain_db": 1.5,
+              "q": 0.8
+            }
+          }
         }
       },
       {
-        "name": "remove_track",
+        "name": "apply_fx",
         "arguments": {
-          "track": "organ_1"
+          "track": "strings__continued_2",
+          "call": {
+            "effect": "sox_reverb",
+            "params": {
+              "reverberance": 55,
+              "wet_gain": -3.0
+            }
+          }
         }
       },
       {
-        "name": "remove_track",
+        "name": "apply_fx",
         "arguments": {
-          "track": "guitar_2"
+          "track": "guitar_2",
+          "call": {
+            "effect": "npy_stereo_widener",
+            "params": {
+              "width": 1.45
+            }
+          }
         }
       },
       {
@@ -38,13 +60,10 @@
         "arguments": {
           "track": "drums",
           "call": {
-            "effect": "sox_reverb",
+            "effect": "am_lowpass_filter",
             "params": {
-              "reverberance": 55.0,
-              "high_freq_damping": 75.0,
-              "room_scale": 65.0,
-              "stereo_depth": 60.0,
-              "wet_gain": -3.5
+              "cutoff_freq": 8000.0,
+              "rolloff": 12.0
             }
           }
         }
@@ -54,9 +73,225 @@
         "arguments": {
           "track": "bass",
           "call": {
-            "effect": "am_lowpass_filter",
+            "effect": "am_bit_crush",
             "params": {
-              "cutoff_freq": 220.0,
+              "bit_depth": 12.0
+            }
+          }
+        }
+      }
+    ],
+    "original_mp3": "audio/case_01_Track00016_original.mp3",
+    "modified_mp3": "audio/case_01_Track00016_modified.mp3",
+    "original_midi": "midi/case_01_Track00016_original.mid",
+    "modified_midi": "midi/case_01_Track00016_modified.mid",
+    "pre_instruments": [
+      {
+        "name": "piano_1",
+        "program": 5,
+        "is_drum": false,
+        "midi_program_name": "Electric Piano 2",
+        "inst_class": "Piano"
+      },
+      {
+        "name": "bass",
+        "program": 33,
+        "is_drum": false,
+        "midi_program_name": "Electric Bass (finger)",
+        "inst_class": "Bass"
+      },
+      {
+        "name": "guitar_1",
+        "program": 29,
+        "is_drum": false,
+        "midi_program_name": "Overdriven Guitar",
+        "inst_class": "Guitar"
+      },
+      {
+        "name": "guitar_2",
+        "program": 26,
+        "is_drum": false,
+        "midi_program_name": "Electric Guitar (jazz)",
+        "inst_class": "Guitar"
+      },
+      {
+        "name": "strings__continued_1",
+        "program": 49,
+        "is_drum": false,
+        "midi_program_name": "String Ensemble 2",
+        "inst_class": "Strings (continued)"
+      },
+      {
+        "name": "strings__continued_2",
+        "program": 48,
+        "is_drum": false,
+        "midi_program_name": "String Ensemble 1",
+        "inst_class": "Strings (continued)"
+      },
+      {
+        "name": "brass",
+        "program": 61,
+        "is_drum": false,
+        "midi_program_name": "Brass Section",
+        "inst_class": "Brass"
+      },
+      {
+        "name": "pipe",
+        "program": 73,
+        "is_drum": false,
+        "midi_program_name": "Flute",
+        "inst_class": "Pipe"
+      },
+      {
+        "name": "drums",
+        "program": 128,
+        "is_drum": true,
+        "midi_program_name": "Drums",
+        "inst_class": "Drums"
+      },
+      {
+        "name": "piano_2",
+        "program": 0,
+        "is_drum": false,
+        "midi_program_name": "Acoustic Grand Piano",
+        "inst_class": "Piano"
+      },
+      {
+        "name": "strings_2",
+        "program": 47,
+        "is_drum": false,
+        "midi_program_name": "Timpani",
+        "inst_class": "Strings"
+      },
+      {
+        "name": "guitar_3",
+        "program": 26,
+        "is_drum": false,
+        "midi_program_name": "Electric Guitar (jazz)",
+        "inst_class": "Guitar"
+      }
+    ],
+    "post_instruments": [
+      {
+        "name": "piano_1",
+        "program": 5,
+        "is_drum": false,
+        "midi_program_name": "Electric Piano 2",
+        "inst_class": "Piano"
+      },
+      {
+        "name": "bass",
+        "program": 33,
+        "is_drum": false,
+        "midi_program_name": "Electric Bass (finger)",
+        "inst_class": "Bass"
+      },
+      {
+        "name": "guitar_1",
+        "program": 29,
+        "is_drum": false,
+        "midi_program_name": "Overdriven Guitar",
+        "inst_class": "Guitar"
+      },
+      {
+        "name": "guitar_2",
+        "program": 26,
+        "is_drum": false,
+        "midi_program_name": "Electric Guitar (jazz)",
+        "inst_class": "Guitar"
+      },
+      {
+        "name": "strings__continued_1",
+        "program": 49,
+        "is_drum": false,
+        "midi_program_name": "String Ensemble 2",
+        "inst_class": "Strings (continued)"
+      },
+      {
+        "name": "strings__continued_2",
+        "program": 48,
+        "is_drum": false,
+        "midi_program_name": "String Ensemble 1",
+        "inst_class": "Strings (continued)"
+      },
+      {
+        "name": "brass",
+        "program": 61,
+        "is_drum": false,
+        "midi_program_name": "Brass Section",
+        "inst_class": "Brass"
+      },
+      {
+        "name": "pipe",
+        "program": 2,
+        "is_drum": false,
+        "midi_program_name": "Flute",
+        "inst_class": "Pipe"
+      },
+      {
+        "name": "drums",
+        "program": 128,
+        "is_drum": true,
+        "midi_program_name": "Drums",
+        "inst_class": "Drums"
+      },
+      {
+        "name": "piano_2",
+        "program": 0,
+        "is_drum": false,
+        "midi_program_name": "Acoustic Grand Piano",
+        "inst_class": "Piano"
+      },
+      {
+        "name": "strings_2",
+        "program": 47,
+        "is_drum": false,
+        "midi_program_name": "Timpani",
+        "inst_class": "Strings"
+      },
+      {
+        "name": "guitar_3",
+        "program": 26,
+        "is_drum": false,
+        "midi_program_name": "Electric Guitar (jazz)",
+        "inst_class": "Guitar"
+      }
+    ],
+    "attempt_count": 1,
+    "executed_ok": true
+  },
+  {
+    "track_id": "Track00009",
+    "role": "film_tv_music_supervisor",
+    "abstraction_level": "scene_metaphor",
+    "hook": "like a packed stadium holding its breath",
+    "primary_intent": "arrangement_add",
+    "primary_tool": "add_track",
+    "target_track": "chromatic_percussion_2, chromatic_percussion_1",
+    "motivation": "Production motivation: Layer in the glockenspiel and the second music box like a packed stadium holding its breath.",
+    "tool_calls": [
+      {
+        "name": "add_track",
+        "arguments": {
+          "track_name": "chromatic_percussion_2",
+          "program": 9
+        }
+      },
+      {
+        "name": "add_track",
+        "arguments": {
+          "track_name": "chromatic_percussion_1",
+          "program": 10
+        }
+      },
+      {
+        "name": "apply_fx",
+        "arguments": {
+          "track": "chromatic_percussion_2",
+          "call": {
+            "effect": "am_highpass_filter",
+            "params": {
+              "cutoff_freq": 2000.0,
               "rolloff": 12.0
             }
           }
@@ -65,13 +300,26 @@
       {
         "name": "apply_fx",
         "arguments": {
-          "track": "piano",
+          "track": "chromatic_percussion_1",
+          "call": {
+            "effect": "am_lowpass_filter",
+            "params": {
+              "cutoff_freq": 2000.0,
+              "rolloff": 12.0
+            }
+          }
+        }
+      },
+      {
+        "name": "apply_fx",
+        "arguments": {
+          "track": "strings__continued_1",
           "call": {
             "effect": "am_high_shelf_filter",
             "params": {
-              "center_freq": 3200.0,
-              "gain_db": 6.0,
-              "q": 0.65
+              "center_freq": 4000.0,
+              "gain_db": 3.0,
+              "q": 0.5
             }
           }
         }
@@ -79,13 +327,13 @@
       {
         "name": "apply_fx",
         "arguments": {
-          "track": "strings__continued",
+          "track": "strings__continued_3",
           "call": {
-            "effect": "am_bandstop_filter",
+            "effect": "am_high_shelf_filter",
             "params": {
-              "center_freq": 1150.0,
-              "bandwidth_fraction": 1.4,
-              "rolloff": 14.0
+              "center_freq": 4000.0,
+              "gain_db": 3.0,
+              "q": 0.5
             }
           }
         }
@@ -93,23 +341,11 @@
       {
         "name": "apply_fx",
         "arguments": {
-          "track": "organ_2",
-          "call": {
-            "effect": "am_tanh_distortion",
-            "params": {
-              "distortion": 0.17
-            }
-          }
-        }
-      },
-      {
-        "name": "apply_fx",
-        "arguments": {
-          "track": "organ_3",
+          "track": "guitar",
           "call": {
             "effect": "am_tanh_distortion",
             "params": {
-              "distortion": 0.17
+              "distortion": 0.2
             }
           }
         }
@@ -121,21 +357,9 @@
           "call": {
             "effect": "sox_compand",
             "params": {
-              "attack_time": 0.015,
-              "decay_time": 0.12,
-              "soft_knee_db": 5.0
-            }
-          }
-        }
-      },
-      {
-        "name": "apply_fx",
-        "arguments": {
-          "track": "mix",
-          "call": {
-            "effect": "am_loudness_normalization",
-            "params": {
-              "lufs": -23.0
+              "attack_time": 0.01,
+              "decay_time": 0.1,
+              "soft_knee_db": 3.0
             }
           }
         }
@@ -145,11 +369,10 @@
         "arguments": {
           "track": "bass",
           "call": {
-            "effect": "am_peaking_filter",
+            "effect": "am_lowpass_filter",
             "params": {
-              "center_freq": 65.0,
-              "gain_db": -7.0,
-              "q": 2.5
+              "cutoff_freq": 300.0,
+              "rolloff": 12.0
             }
           }
         }
@@ -159,11 +382,9 @@
         "arguments": {
           "track": "piano",
           "call": {
-            "effect": "sox_treble",
+            "effect": "npy_stereo_widener",
             "params": {
-              "gain_db": 4.5,
-              "frequency": 4200.0,
-              "slope": 0.55
+              "width": 1.5
             }
           }
         }
@@ -171,36 +392,16 @@
       {
         "name": "apply_fx",
         "arguments": {
-          "track": "strings__continued",
+          "track": "mix",
           "call": {
-            "effect": "am_highpass_filter",
+            "effect": "sox_reverb",
             "params": {
-              "cutoff_freq": 250.0,
-              "rolloff": 18.0
-            }
-          }
-        }
-      },
-      {
-        "name": "apply_fx",
-        "arguments": {
-          "track": "organ_2",
-          "call": {
-            "effect": "am_gain",
-            "params": {
-              "gain_db": 1.5
-            }
-          }
-        }
-      },
-      {
-        "name": "apply_fx",
-        "arguments": {
-          "track": "organ_3",
-          "call": {
-            "effect": "am_gain",
-            "params": {
-              "gain_db": 1.5
+              "reverberance": 40.0,
+              "high_freq_damping": 50.0,
+              "room_scale": 60.0,
+              "stereo_depth": 70.0,
+              "pre_delay": 10.0,
+              "wet_gain": -4.0
             }
           }
         }
@@ -210,43 +411,61 @@
         "arguments": {
           "track": "drums",
           "call": {
-            "effect": "sox_reverb",
+            "effect": "sci_notch_iir",
             "params": {
-              "reverberance": 50.0,
-              "high_freq_damping": 70.0,
-              "room_scale": 70.0,
-              "stereo_depth": 50.0,
-              "wet_gain": -4.0
+              "freq": 150.0,
+              "Q": 5.0
+            }
+          }
+        }
+      },
+      {
+        "name": "apply_fx",
+        "arguments": {
+          "track": "reed",
+          "call": {
+            "effect": "am_bandpass_filter",
+            "params": {
+              "center_freq": 1500.0,
+              "bandwidth_fraction": 1.0,
+              "rolloff": 12.0
             }
           }
         }
       }
     ],
-    "original_mp3": "audio/case_01_Track00001_original.mp3",
-    "modified_mp3": "audio/case_01_Track00001_modified.mp3",
-    "original_midi": "midi/case_01_Track00001_original.mid",
-    "modified_midi": "midi/case_01_Track00001_modified.mid",
+    "original_mp3": "audio/case_02_Track00009_original.mp3",
+    "modified_mp3": "audio/case_02_Track00009_modified.mp3",
+    "original_midi": "midi/case_02_Track00009_original.mid",
+    "modified_midi": "midi/case_02_Track00009_modified.mid",
     "pre_instruments": [
-      {
-        "name": "guitar_1",
-        "program": 30,
-        "is_drum": false,
-        "midi_program_name": "Distortion Guitar",
-        "inst_class": "Guitar"
-      },
-      {
-        "name": "drums",
-        "program": 128,
-        "is_drum": true,
-        "midi_program_name": "Drums",
-        "inst_class": "Drums"
-      },
       {
         "name": "piano",
         "program": 1,
         "is_drum": false,
         "midi_program_name": "Bright Acoustic Piano",
         "inst_class": "Piano"
+      },
+      {
+        "name": "chromatic_percussion_3",
+        "program": 10,
+        "is_drum": false,
+        "midi_program_name": "Music Box",
+        "inst_class": "Chromatic Percussion"
+      },
+      {
+        "name": "strings__continued_1",
+        "program": 52,
+        "is_drum": false,
+        "midi_program_name": "Choir Aahs",
+        "inst_class": "Strings (continued)"
+      },
+      {
+        "name": "reed",
+        "program": 68,
+        "is_drum": false,
+        "midi_program_name": "Oboe",
+        "inst_class": "Reed"
       },
       {
         "name": "bass",
@@ -256,46 +475,211 @@
         "inst_class": "Bass"
       },
       {
-        "name": "strings__continued",
+        "name": "drums",
+        "program": 128,
+        "is_drum": true,
+        "midi_program_name": "Drums",
+        "inst_class": "Drums"
+      },
+      {
+        "name": "strings__continued_3",
         "program": 52,
         "is_drum": false,
         "midi_program_name": "Choir Aahs",
         "inst_class": "Strings (continued)"
       },
       {
-        "name": "organ_1",
-        "program": 17,
+        "name": "guitar",
+        "program": 28,
         "is_drum": false,
-        "midi_program_name": "Percussive Organ",
-        "inst_class": "Organ"
+        "midi_program_name": "Electric Guitar (muted)",
+        "inst_class": "Guitar"
+      }
+    ],
+    "post_instruments": [
+      {
+        "name": "piano",
+        "program": 1,
+        "is_drum": false,
+        "midi_program_name": "Bright Acoustic Piano",
+        "inst_class": "Piano"
       },
       {
-        "name": "guitar_2",
-        "program": 26,
+        "name": "chromatic_percussion_3",
+        "program": 10,
         "is_drum": false,
-        "midi_program_name": "Electric Guitar (jazz)",
+        "midi_program_name": "Music Box",
+        "inst_class": "Chromatic Percussion"
+      },
+      {
+        "name": "strings__continued_1",
+        "program": 52,
+        "is_drum": false,
+        "midi_program_name": "Choir Aahs",
+        "inst_class": "Strings (continued)"
+      },
+      {
+        "name": "reed",
+        "program": 68,
+        "is_drum": false,
+        "midi_program_name": "Oboe",
+        "inst_class": "Reed"
+      },
+      {
+        "name": "bass",
+        "program": 33,
+        "is_drum": false,
+        "midi_program_name": "Electric Bass (finger)",
+        "inst_class": "Bass"
+      },
+      {
+        "name": "drums",
+        "program": 128,
+        "is_drum": true,
+        "midi_program_name": "Drums",
+        "inst_class": "Drums"
+      },
+      {
+        "name": "strings__continued_3",
+        "program": 52,
+        "is_drum": false,
+        "midi_program_name": "Choir Aahs",
+        "inst_class": "Strings (continued)"
+      },
+      {
+        "name": "guitar",
+        "program": 28,
+        "is_drum": false,
+        "midi_program_name": "Electric Guitar (muted)",
         "inst_class": "Guitar"
       },
       {
-        "name": "guitar_3",
-        "program": 30,
+        "name": "chromatic_percussion_2",
+        "program": 9,
         "is_drum": false,
-        "midi_program_name": "Distortion Guitar",
+        "midi_program_name": "Glockenspiel",
+        "inst_class": "Chromatic Percussion"
+      },
+      {
+        "name": "chromatic_percussion_1",
+        "program": 10,
+        "is_drum": false,
+        "midi_program_name": "Music Box",
+        "inst_class": "Chromatic Percussion"
+      }
+    ],
+    "attempt_count": 1,
+    "executed_ok": true
+  },
+  {
+    "track_id": "Track00008",
+    "role": "band_consensus",
+    "abstraction_level": "technical_parametric",
+    "hook": "limiter ceiling at -1 dBTP, true-peak mode, 2 ms lookahead",
+    "primary_intent": "arrangement_remove",
+    "primary_tool": "remove_track",
+    "target_track": "synth_pad, guitar, bass",
+    "motivation": "Production motivation: Removing the pad 4, guitar, and bass resolves midrange collision below 400Hz; apply 5dB GR (attack 0.05s, decay 0.05s) on drums and 50% reverberance room reverb on strings to maintain -1dBTP ceiling without clipping.",
+    "tool_calls": [
+      {
+        "name": "remove_track",
+        "arguments": {
+          "track": "synth_pad"
+        }
+      },
+      {
+        "name": "remove_track",
+        "arguments": {
+          "track": "guitar"
+        }
+      },
+      {
+        "name": "remove_track",
+        "arguments": {
+          "track": "bass"
+        }
+      },
+      {
+        "name": "apply_fx",
+        "arguments": {
+          "track": "drums",
+          "call": {
+            "effect": "sox_compand",
+            "params": {
+              "attack_time": 0.05,
+              "decay_time": 0.05,
+              "soft_knee_db": 6.0
+            }
+          }
+        }
+      },
+      {
+        "name": "apply_fx",
+        "arguments": {
+          "track": "strings__continued",
+          "call": {
+            "effect": "sox_reverb",
+            "params": {
+              "reverberance": 50.0,
+              "wet_gain": -4.0
+            }
+          }
+        }
+      }
+    ],
+    "original_mp3": "audio/case_03_Track00008_original.mp3",
+    "modified_mp3": "audio/case_03_Track00008_modified.mp3",
+    "original_midi": "midi/case_03_Track00008_original.mid",
+    "modified_midi": "midi/case_03_Track00008_modified.mid",
+    "pre_instruments": [
+      {
+        "name": "bass",
+        "program": 35,
+        "is_drum": false,
+        "midi_program_name": "Fretless Bass",
+        "inst_class": "Bass"
+      },
+      {
+        "name": "drums",
+        "program": 128,
+        "is_drum": true,
+        "midi_program_name": "Drums",
+        "inst_class": "Drums"
+      },
+      {
+        "name": "piano_1",
+        "program": 5,
+        "is_drum": false,
+        "midi_program_name": "Electric Piano 2",
+        "inst_class": "Piano"
+      },
+      {
+        "name": "guitar",
+        "program": 27,
+        "is_drum": false,
+        "midi_program_name": "Electric Guitar (clean)",
         "inst_class": "Guitar"
       },
       {
-        "name": "organ_2",
-        "program": 22,
+        "name": "strings__continued",
+        "program": 49,
         "is_drum": false,
-        "midi_program_name": "Harmonica",
-        "inst_class": "Organ"
+        "midi_program_name": "String Ensemble 2",
+        "inst_class": "Strings (continued)"
       },
       {
-        "name": "organ_3",
-        "program": 22,
+        "name": "piano_2",
+        "program": 0,
         "is_drum": false,
-        "midi_program_name": "Harmonica",
-        "inst_class": "Organ"
+        "midi_program_name": "Acoustic Grand Piano",
+        "inst_class": "Piano"
+      },
+      {
+        "name": "synth_pad",
+        "program": 91,
+        "is_drum": false,
+        "midi_program_name": "Pad 4 (choir)",
+        "inst_class": "Synth Pad"
       }
     ],
     "post_instruments": [
@@ -307,39 +691,25 @@
         "inst_class": "Drums"
       },
       {
-        "name": "piano",
-        "program": 1,
+        "name": "piano_1",
+        "program": 5,
         "is_drum": false,
-        "midi_program_name": "Bright Acoustic Piano",
+        "midi_program_name": "Electric Piano 2",
         "inst_class": "Piano"
       },
       {
-        "name": "bass",
-        "program": 33,
-        "is_drum": false,
-        "midi_program_name": "Electric Bass (finger)",
-        "inst_class": "Bass"
-      },
-      {
         "name": "strings__continued",
-        "program": 52,
+        "program": 49,
         "is_drum": false,
-        "midi_program_name": "Choir Aahs",
+        "midi_program_name": "String Ensemble 2",
         "inst_class": "Strings (continued)"
       },
       {
-        "name": "organ_2",
-        "program": 22,
+        "name": "piano_2",
+        "program": 0,
         "is_drum": false,
-        "midi_program_name": "Harmonica",
-        "inst_class": "Organ"
-      },
-      {
-        "name": "organ_3",
-        "program": 22,
-        "is_drum": false,
-        "midi_program_name": "Harmonica",
-        "inst_class": "Organ"
+        "midi_program_name": "Acoustic Grand Piano",
+        "inst_class": "Piano"
       }
     ],
     "attempt_count": 1,
@@ -347,171 +717,23 @@
   },
   {
     "track_id": "Track00002",
-    "role": "film_tv_music_supervisor",
-    "abstraction_level": "scene_metaphor",
-    "hook": "like looking through a screen door at a party",
-    "primary_intent": "arrangement_mute_replace",
-    "primary_tool": "mute_and_replace",
-    "target_track": "strings__continued_1",
-    "motivation": "Production motivation: The synth strings 1 feel too brittle and clear \u2014 like looking through a screen door at a party \u2014 so we're swapping them for GM 72's rich halo pad to create that immersive, hazy warmth.",
+    "role": "band_consensus",
+    "abstraction_level": "instrument_specific",
+    "hook": "a pad is competing with lead melodic motion",
+    "primary_intent": "effects",
+    "primary_tool": "apply_fx",
+    "target_track": null,
+    "motivation": "Production motivation: The pad is competing with the lead's melodic motion, so we'll highpass-cut the synth pad and synth strings 1 to carve space, boost the lead with a 5dB peak at 1.5kHz, and clean the bass and guitar mids to prevent muddy buildup.",
     "tool_calls": [
-      {
-        "name": "mute_and_replace",
-        "arguments": {
-          "track_name": "strings__continued_1",
-          "new_program": 72
-        }
-      },
-      {
-        "name": "apply_fx",
-        "arguments": {
-          "track": "strings__continued_1",
-          "call": {
-            "effect": "sox_reverb",
-            "params": {
-              "reverberance": 50.0,
-              "high_freq_damping": 65.0,
-              "room_scale": 80.0,
-              "stereo_depth": 55.0,
-              "pre_delay": 10.0,
-              "wet_gain": -3.0
-            }
-          }
-        }
-      },
-      {
-        "name": "apply_fx",
-        "arguments": {
-          "track": "bass",
-          "call": {
-            "effect": "am_lowpass_filter",
-            "params": {
-              "cutoff_freq": 200.0,
-              "rolloff": 12.0
-            }
-          }
-        }
-      },
-      {
-        "name": "apply_fx",
-        "arguments": {
-          "track": "synth_lead",
-          "call": {
-            "effect": "sox_overdrive",
-            "params": {
-              "gain_db": 12.0
-            }
-          }
-        }
-      },
       {
         "name": "apply_fx",
         "arguments": {
           "track": "synth_pad",
           "call": {
-            "effect": "npy_stereo_widener",
-            "params": {
-              "width": 1.4
-            }
-          }
-        }
-      },
-      {
-        "name": "apply_fx",
-        "arguments": {
-          "track": "strings__continued_2",
-          "call": {
             "effect": "am_highpass_filter",
             "params": {
               "cutoff_freq": 500.0,
-              "rolloff": 6.0
-            }
-          }
-        }
-      },
-      {
-        "name": "apply_fx",
-        "arguments": {
-          "track": "chromatic_percussion",
-          "call": {
-            "effect": "am_bit_crush",
-            "params": {
-              "bit_depth": 10.0
-            }
-          }
-        }
-      },
-      {
-        "name": "apply_fx",
-        "arguments": {
-          "track": "piano",
-          "call": {
-            "effect": "sox_phaser",
-            "params": {
-              "gain_in": 0.7,
-              "gain_out": 0.6,
-              "delay": 2.0,
-              "decay": 0.4,
-              "speed": 1.0,
-              "depth": 4.0
-            }
-          }
-        }
-      },
-      {
-        "name": "apply_fx",
-        "arguments": {
-          "track": "guitar",
-          "call": {
-            "effect": "sox_echo",
-            "params": {
-              "gain_in": 0.7,
-              "gain_out": 0.5,
-              "delay_ms": 120.0,
-              "decay": 0.4
-            }
-          }
-        }
-      },
-      {
-        "name": "apply_fx",
-        "arguments": {
-          "track": "drums",
-          "call": {
-            "effect": "sox_reverb",
-            "params": {
-              "reverberance": 45.0,
-              "high_freq_damping": 75.0,
-              "room_scale": 75.0,
-              "stereo_depth": 50.0,
-              "pre_delay": 5.0,
-              "wet_gain": -2.0
-            }
-          }
-        }
-      },
-      {
-        "name": "apply_fx",
-        "arguments": {
-          "track": "mix",
-          "call": {
-            "effect": "sox_compand",
-            "params": {
-              "attack_time": 0.03,
-              "decay_time": 0.1,
-              "soft_knee_db": 3.0
-            }
-          }
-        }
-      },
-      {
-        "name": "apply_fx",
-        "arguments": {
-          "track": "mix",
-          "call": {
-            "effect": "am_loudness_normalization",
-            "params": {
-              "lufs": -23.0
+              "rolloff": 12.0
             }
           }
         }
@@ -524,46 +746,17 @@
             "effect": "am_peaking_filter",
             "params": {
               "center_freq": 1500.0,
-              "gain_db": 4.0,
-              "q": 0.7
-            }
-          }
-        }
-      },
-      {
-        "name": "apply_fx",
-        "arguments": {
-          "track": "strings__continued_1",
-          "call": {
-            "effect": "am_bit_crush",
-            "params": {
-              "bit_depth": 9.0
-            }
-          }
-        }
-      },
-      {
-        "name": "apply_fx",
-        "arguments": {
-          "track": "drums",
-          "call": {
-            "effect": "sox_reverb",
-            "params": {
-              "reverberance": 45,
-              "high_freq_damping": 70,
-              "room_scale": 85,
-              "stereo_depth": 60,
-              "pre_delay": 15,
-              "wet_gain": -2
+              "gain_db": 5.0,
+              "q": 1.0
             }
           }
         }
       }
     ],
-    "original_mp3": "audio/case_02_Track00002_original.mp3",
-    "modified_mp3": "audio/case_02_Track00002_modified.mp3",
-    "original_midi": "midi/case_02_Track00002_original.mid",
-    "modified_midi": "midi/case_02_Track00002_modified.mid",
+    "original_mp3": "audio/case_04_Track00002_original.mp3",
+    "modified_mp3": "audio/case_04_Track00002_modified.mp3",
+    "original_midi": "midi/case_04_Track00002_original.mid",
+    "modified_midi": "midi/case_04_Track00002_modified.mid",
     "pre_instruments": [
       {
         "name": "strings__continued_1",
@@ -632,7 +825,7 @@
     "post_instruments": [
       {
         "name": "strings__continued_1",
-        "program": 72,
+        "program": 50,
         "is_drum": false,
         "midi_program_name": "Synth Strings 1",
         "inst_class": "Strings (continued)"
@@ -698,227 +891,34 @@
     "executed_ok": true
   },
   {
-    "track_id": "Track00003",
-    "role": "producer",
-    "abstraction_level": "instrument_specific",
-    "hook": "there's an imbalance between the rhythm section and the lead voices",
-    "primary_intent": "remix",
-    "primary_tool": "remix_op",
-    "target_track": null,
-    "motivation": "Production motivation: The rhythm section's muddy bass and overdriven guitar are drowning the lead voices\u2014replace them with drums, a Fretless Bass piano, and nylon acoustic guitar to let the lead elements breathe.",
-    "tool_calls": [
-      {
-        "name": "remove_track",
-        "arguments": {
-          "track": "bass"
-        }
-      },
-      {
-        "name": "remove_track",
-        "arguments": {
-          "track": "guitar_2"
-        }
-      },
-      {
-        "name": "change_instrument",
-        "arguments": {
-          "track": "piano",
-          "to_program": 21
-        }
-      },
-      {
-        "name": "change_instrument",
-        "arguments": {
-          "track": "guitar_3",
-          "to_program": 35
-        }
-      },
-      {
-        "name": "add_track",
-        "arguments": {
-          "track_name": "drums",
-          "program": 0
-        }
-      },
-      {
-        "name": "add_track",
-        "arguments": {
-          "track_name": "guitar_4",
-          "program": 27
-        }
-      },
-      {
-        "name": "apply_fx",
-        "arguments": {
-          "track": "drums",
-          "call": {
-            "effect": "sox_reverb",
-            "params": {}
-          }
-        }
-      },
-      {
-        "name": "apply_fx",
-        "arguments": {
-          "track": "guitar_4",
-          "call": {
-            "effect": "sox_overdrive",
-            "params": {
-              "gain_db": 12
-            }
-          }
-        }
-      },
-      {
-        "name": "apply_fx",
-        "arguments": {
-          "track": "guitar_3",
-          "call": {
-            "effect": "ta_treble_biquad",
-            "params": {
-              "gain_db": 4,
-              "central_freq": 4000,
-              "Q": 0.7
-            }
-          }
-        }
-      },
-      {
-        "name": "apply_fx",
-        "arguments": {
-          "track": "piano",
-          "call": {
-            "effect": "am_highpass_filter",
-            "params": {
-              "cutoff_freq": 60,
-              "rolloff": 12
-            }
-          }
-        }
-      },
-      {
-        "name": "apply_fx",
-        "arguments": {
-          "track": "drums",
-          "call": {
-            "effect": "sox_compand",
-            "params": {
-              "attack_time": 0.01,
-              "decay_time": 0.1,
-              "soft_knee_db": 5
-            }
-          }
-        }
-      },
-      {
-        "name": "apply_fx",
-        "arguments": {
-          "track": "guitar_4",
-          "call": {
-            "effect": "sox_echo",
-            "params": {
-              "gain_in": 0.8,
-              "gain_out": 0.6,
-              "delay_ms": 150,
-              "decay": 0.4
-            }
-          }
-        }
-      }
-    ],
-    "original_mp3": "audio/case_03_Track00003_original.mp3",
-    "modified_mp3": "audio/case_03_Track00003_modified.mp3",
-    "original_midi": "midi/case_03_Track00003_original.mid",
-    "modified_midi": "midi/case_03_Track00003_modified.mid",
-    "pre_instruments": [
-      {
-        "name": "piano",
-        "program": 1,
-        "is_drum": false,
-        "midi_program_name": "Bright Acoustic Piano",
-        "inst_class": "Piano"
-      },
-      {
-        "name": "bass",
-        "program": 34,
-        "is_drum": false,
-        "midi_program_name": "Electric Bass (pick)",
-        "inst_class": "Bass"
-      },
-      {
-        "name": "guitar_2",
-        "program": 29,
-        "is_drum": false,
-        "midi_program_name": "Overdriven Guitar",
-        "inst_class": "Guitar"
-      },
-      {
-        "name": "guitar_3",
-        "program": 26,
-        "is_drum": false,
-        "midi_program_name": "Electric Guitar (jazz)",
-        "inst_class": "Guitar"
-      }
-    ],
-    "post_instruments": [
-      {
-        "name": "piano",
-        "program": 21,
-        "is_drum": false,
-        "midi_program_name": "Bright Acoustic Piano",
-        "inst_class": "Piano"
-      },
-      {
-        "name": "guitar_3",
-        "program": 35,
-        "is_drum": false,
-        "midi_program_name": "Electric Guitar (jazz)",
-        "inst_class": "Guitar"
-      },
-      {
-        "name": "drums",
-        "program": 0,
-        "is_drum": true,
-        "midi_program_name": "Drums",
-        "inst_class": "Drums"
-      },
-      {
-        "name": "guitar_4",
-        "program": 27,
-        "is_drum": false,
-        "midi_program_name": "Electric Guitar (clean)",
-        "inst_class": "Guitar"
-      }
-    ],
-    "attempt_count": 1,
-    "executed_ok": true
-  },
-  {
     "track_id": "Track00004",
-    "role": "mixing_engineer_self_note",
+    "role": "mastering_engineer",
     "abstraction_level": "reference_based",
-    "hook": "Larry Heard's Mr. Fingers \u2014 deep, warm Chicago house",
-    "primary_intent": "arrangement_remove",
-    "primary_tool": "remove_track",
-    "target_track": "synth_pad, strings__continued_1, strings__continued_2",
-    "motivation": "Production motivation: Removing the pad 3, choir aahs, and synth strings 1 clears the muddy midrange clutter that drowns the electric bass and rock organ, letting the mix breathe like Larry Heard's Mr. Fingers \u2014 warm, deep, and roomy without unnecessary layers.",
+    "hook": "Tom Jobim's Wave \u2014 soft bossa swing, warm upright bass",
+    "primary_intent": "instrument_swap",
+    "primary_tool": "change_instrument",
+    "target_track": "organ, guitar, synth_pad",
+    "motivation": "Production motivation: Need the soft bossa swing of Tom Jobim's Wave\u2014swap organ to GM 85 for string warmth, guitar to GM 81 for smooth leads, and the pad 3 to GM 69 for velvet pads, then apply 10dB sox_overdrive to electric bass, medium sox_reverb on choir aahs/synth strings, and 5kHz am_lowpass on electric guitar.",
     "tool_calls": [
       {
-        "name": "remove_track",
+        "name": "change_instrument",
         "arguments": {
-          "track": "synth_pad"
+          "track": "organ",
+          "to_program": 85
         }
       },
       {
-        "name": "remove_track",
+        "name": "change_instrument",
         "arguments": {
-          "track": "strings__continued_1"
+          "track": "guitar",
+          "to_program": 81
         }
       },
       {
-        "name": "remove_track",
+        "name": "change_instrument",
         "arguments": {
-          "track": "strings__continued_2"
+          "track": "synth_pad",
+          "to_program": 69
         }
       },
       {
@@ -926,49 +926,9 @@
         "arguments": {
           "track": "bass",
           "call": {
-            "effect": "am_highpass_filter",
+            "effect": "sox_overdrive",
             "params": {
-              "cutoff_freq": 80.0,
-              "rolloff": 12.0
-            }
-          }
-        }
-      },
-      {
-        "name": "apply_fx",
-        "arguments": {
-          "track": "drums",
-          "call": {
-            "effect": "sox_compand",
-            "params": {
-              "attack_time": 0.01,
-              "decay_time": 0.1,
-              "soft_knee_db": 4.0
-            }
-          }
-        }
-      },
-      {
-        "name": "apply_fx",
-        "arguments": {
-          "track": "organ",
-          "call": {
-            "effect": "am_tanh_distortion",
-            "params": {
-              "distortion": 0.2
-            }
-          }
-        }
-      },
-      {
-        "name": "apply_fx",
-        "arguments": {
-          "track": "drums",
-          "call": {
-            "effect": "sox_reverb",
-            "params": {
-              "reverberance": 55.0,
-              "wet_gain": -4.0
+              "gain_db": 10.0
             }
           }
         }
@@ -977,6 +937,67 @@
         "name": "apply_fx",
         "arguments": {
           "track": "guitar",
+          "call": {
+            "effect": "am_lowpass_filter",
+            "params": {
+              "cutoff_freq": 5000.0,
+              "rolloff": 12.0
+            }
+          }
+        }
+      },
+      {
+        "name": "apply_fx",
+        "arguments": {
+          "track": "strings__continued_1",
+          "call": {
+            "effect": "sox_reverb",
+            "params": {
+              "reverberance": 45.0,
+              "high_freq_damping": 70.0,
+              "room_scale": 60.0,
+              "stereo_depth": 70.0,
+              "pre_delay": 20.0,
+              "wet_gain": -4.0
+            }
+          }
+        }
+      },
+      {
+        "name": "apply_fx",
+        "arguments": {
+          "track": "strings__continued_2",
+          "call": {
+            "effect": "sox_reverb",
+            "params": {
+              "reverberance": 45.0,
+              "high_freq_damping": 70.0,
+              "room_scale": 60.0,
+              "stereo_depth": 70.0,
+              "pre_delay": 20.0,
+              "wet_gain": -4.0
+            }
+          }
+        }
+      },
+      {
+        "name": "apply_fx",
+        "arguments": {
+          "track": "drums",
+          "call": {
+            "effect": "sox_compand",
+            "params": {
+              "attack_time": 0.01,
+              "decay_time": 0.2,
+              "soft_knee_db": 4.0
+            }
+          }
+        }
+      },
+      {
+        "name": "apply_fx",
+        "arguments": {
+          "track": "strings__continued_2",
           "call": {
             "effect": "npy_stereo_widener",
             "params": {
@@ -990,11 +1011,10 @@
         "arguments": {
           "track": "piano_1",
           "call": {
-            "effect": "am_low_shelf_filter",
+            "effect": "am_highpass_filter",
             "params": {
-              "center_freq": 300.0,
-              "gain_db": -6.0,
-              "q": 0.3
+              "cutoff_freq": 200.0,
+              "rolloff": 12.0
             }
           }
         }
@@ -1004,24 +1024,9 @@
         "arguments": {
           "track": "bass",
           "call": {
-            "effect": "am_lowpass_filter",
+            "effect": "am_tanh_distortion",
             "params": {
-              "cutoff_freq": 400.0,
-              "rolloff": 18.0
-            }
-          }
-        }
-      },
-      {
-        "name": "apply_fx",
-        "arguments": {
-          "track": "organ",
-          "call": {
-            "effect": "am_high_shelf_filter",
-            "params": {
-              "center_freq": 4500.0,
-              "gain_db": 5.0,
-              "q": 0.6
+              "distortion": 0.15
             }
           }
         }
@@ -1031,11 +1036,42 @@
         "arguments": {
           "track": "guitar",
           "call": {
-            "effect": "am_peaking_filter",
+            "effect": "sox_echo",
             "params": {
-              "center_freq": 2500.0,
-              "gain_db": 4.0,
-              "q": 1.2
+              "gain_in": 0.7,
+              "gain_out": 0.5,
+              "delay_ms": 100.0,
+              "decay": 0.3
+            }
+          }
+        }
+      },
+      {
+        "name": "apply_fx",
+        "arguments": {
+          "track": "drums",
+          "call": {
+            "effect": "sox_reverb",
+            "params": {
+              "reverberance": 35.0,
+              "high_freq_damping": 60.0,
+              "room_scale": 50.0,
+              "stereo_depth": 50.0,
+              "pre_delay": 15.0,
+              "wet_gain": -6.0
+            }
+          }
+        }
+      },
+      {
+        "name": "apply_fx",
+        "arguments": {
+          "track": "synth_pad",
+          "call": {
+            "effect": "am_lowpass_filter",
+            "params": {
+              "cutoff_freq": 3000.0,
+              "rolloff": 12.0
             }
           }
         }
@@ -1045,32 +1081,20 @@
         "arguments": {
           "track": "piano_1",
           "call": {
-            "effect": "sox_bass",
+            "effect": "sox_treble",
             "params": {
-              "gain_db": 3.0,
-              "frequency": 150.0,
-              "slope": 0.5
-            }
-          }
-        }
-      },
-      {
-        "name": "apply_fx",
-        "arguments": {
-          "track": "mix",
-          "call": {
-            "effect": "am_loudness_normalization",
-            "params": {
-              "lufs": -20.0
+              "gain_db": 6.0,
+              "frequency": 3000.0,
+              "slope": 0.4
             }
           }
         }
       }
     ],
-    "original_mp3": "audio/case_04_Track00004_original.mp3",
-    "modified_mp3": "audio/case_04_Track00004_modified.mp3",
-    "original_midi": "midi/case_04_Track00004_original.mid",
-    "modified_midi": "midi/case_04_Track00004_modified.mid",
+    "original_mp3": "audio/case_05_Track00004_original.mp3",
+    "modified_mp3": "audio/case_05_Track00004_modified.mp3",
+    "original_midi": "midi/case_05_Track00004_original.mid",
+    "modified_midi": "midi/case_05_Track00004_modified.mid",
     "pre_instruments": [
       {
         "name": "synth_pad",
@@ -1131,6 +1155,13 @@
     ],
     "post_instruments": [
       {
+        "name": "synth_pad",
+        "program": 69,
+        "is_drum": false,
+        "midi_program_name": "Pad 3 (polysynth)",
+        "inst_class": "Synth Pad"
+      },
+      {
         "name": "bass",
         "program": 33,
         "is_drum": false,
@@ -1138,18 +1169,32 @@
         "inst_class": "Bass"
       },
       {
+        "name": "strings__continued_1",
+        "program": 52,
+        "is_drum": false,
+        "midi_program_name": "Choir Aahs",
+        "inst_class": "Strings (continued)"
+      },
+      {
         "name": "organ",
-        "program": 18,
+        "program": 85,
         "is_drum": false,
         "midi_program_name": "Rock Organ",
         "inst_class": "Organ"
       },
       {
         "name": "guitar",
-        "program": 28,
+        "program": 81,
         "is_drum": false,
         "midi_program_name": "Electric Guitar (muted)",
         "inst_class": "Guitar"
+      },
+      {
+        "name": "strings__continued_2",
+        "program": 50,
+        "is_drum": false,
+        "midi_program_name": "Synth Strings 1",
+        "inst_class": "Strings (continued)"
       },
       {
         "name": "piano_1",
@@ -1171,23 +1216,83 @@
   },
   {
     "track_id": "Track00005",
-    "role": "artist_instrumentalist",
-    "abstraction_level": "instrument_specific",
-    "hook": "one track's sustain is too long and blurring subsequent hits",
-    "primary_intent": "effects",
-    "primary_tool": "apply_fx",
+    "role": "artist_vocalist",
+    "abstraction_level": "emotional_perceptual",
+    "hook": "feverish and delirious, a cold medicine hallucination",
+    "primary_intent": "remix",
+    "primary_tool": "remix_op",
     "target_track": null,
-    "motivation": "Production motivation: the synth strings 1 are bleeding into the next hits with their long reverb tails, and the overdriven guitar needs more edge to cut through the pad.",
+    "motivation": "Production motivation: This feverish and delirious, a cold medicine hallucination now feels like sinking into warm velvet\u2014smoky sax, velvet bass, and flutes that whisper in the dark, not scream.",
     "tool_calls": [
+      {
+        "name": "remove_track",
+        "arguments": {
+          "track": "chromatic_percussion"
+        }
+      },
+      {
+        "name": "remove_track",
+        "arguments": {
+          "track": "strings__continued"
+        }
+      },
+      {
+        "name": "remove_track",
+        "arguments": {
+          "track": "pipe_3"
+        }
+      },
+      {
+        "name": "remove_track",
+        "arguments": {
+          "track": "piano_2"
+        }
+      },
+      {
+        "name": "change_instrument",
+        "arguments": {
+          "track": "piano_1",
+          "to_program": 17
+        }
+      },
+      {
+        "name": "change_instrument",
+        "arguments": {
+          "track": "guitar_1",
+          "to_program": 64
+        }
+      },
+      {
+        "name": "add_track",
+        "arguments": {
+          "track_name": "reed",
+          "program": 64
+        }
+      },
+      {
+        "name": "add_track",
+        "arguments": {
+          "track_name": "bass",
+          "program": 33
+        }
+      },
+      {
+        "name": "add_track",
+        "arguments": {
+          "track_name": "pipe_2",
+          "program": 73
+        }
+      },
       {
         "name": "apply_fx",
         "arguments": {
-          "track": "strings__continued",
+          "track": "reed",
           "call": {
-            "effect": "sox_reverb",
+            "effect": "sox_bass",
             "params": {
-              "reverberance": 55.0,
-              "wet_gain": -4.0
+              "gain_db": 3.0,
+              "frequency": 100.0,
+              "slope": 0.5
             }
           }
         }
@@ -1195,11 +1300,457 @@
       {
         "name": "apply_fx",
         "arguments": {
-          "track": "guitar_2",
+          "track": "bass",
           "call": {
-            "effect": "sox_overdrive",
+            "effect": "sox_compand",
             "params": {
-              "gain_db": 14.0
+              "attack_time": 0.01,
+              "decay_time": 0.1,
+              "soft_knee_db": 5.0
+            }
+          }
+        }
+      },
+      {
+        "name": "apply_fx",
+        "arguments": {
+          "track": "pipe_2",
+          "call": {
+            "effect": "am_highpass_filter",
+            "params": {
+              "cutoff_freq": 300.0,
+              "rolloff": 12.0
+            }
+          }
+        }
+      },
+      {
+        "name": "apply_fx",
+        "arguments": {
+          "track": "mix",
+          "call": {
+            "effect": "sox_reverb",
+            "params": {
+              "reverberance": 50.0,
+              "wet_gain": -3.0
+            }
+          }
+        }
+      }
+    ],
+    "original_mp3": "audio/case_06_Track00005_original.mp3",
+    "modified_mp3": "audio/case_06_Track00005_modified.mp3",
+    "original_midi": "midi/case_06_Track00005_original.mid",
+    "modified_midi": "midi/case_06_Track00005_modified.mid",
+    "pre_instruments": [
+      {
+        "name": "guitar_1",
+        "program": 25,
+        "is_drum": false,
+        "midi_program_name": "Acoustic Guitar (steel)",
+        "inst_class": "Guitar"
+      },
+      {
+        "name": "piano_1",
+        "program": 0,
+        "is_drum": false,
+        "midi_program_name": "Acoustic Grand Piano",
+        "inst_class": "Piano"
+      },
+      {
+        "name": "chromatic_percussion",
+        "program": 9,
+        "is_drum": false,
+        "midi_program_name": "Glockenspiel",
+        "inst_class": "Chromatic Percussion"
+      },
+      {
+        "name": "piano_2",
+        "program": 5,
+        "is_drum": false,
+        "midi_program_name": "Electric Piano 2",
+        "inst_class": "Piano"
+      },
+      {
+        "name": "pipe_3",
+        "program": 75,
+        "is_drum": false,
+        "midi_program_name": "Pan Flute",
+        "inst_class": "Pipe"
+      },
+      {
+        "name": "strings__continued",
+        "program": 50,
+        "is_drum": false,
+        "midi_program_name": "Synth Strings 1",
+        "inst_class": "Strings (continued)"
+      }
+    ],
+    "post_instruments": [
+      {
+        "name": "guitar_1",
+        "program": 64,
+        "is_drum": false,
+        "midi_program_name": "Acoustic Guitar (steel)",
+        "inst_class": "Guitar"
+      },
+      {
+        "name": "piano_1",
+        "program": 17,
+        "is_drum": false,
+        "midi_program_name": "Acoustic Grand Piano",
+        "inst_class": "Piano"
+      },
+      {
+        "name": "reed",
+        "program": 64,
+        "is_drum": false,
+        "midi_program_name": "Soprano Sax",
+        "inst_class": "Reed"
+      },
+      {
+        "name": "bass",
+        "program": 33,
+        "is_drum": false,
+        "midi_program_name": "Electric Bass (finger)",
+        "inst_class": "Bass"
+      },
+      {
+        "name": "pipe_2",
+        "program": 73,
+        "is_drum": false,
+        "midi_program_name": "Flute",
+        "inst_class": "Pipe"
+      }
+    ],
+    "attempt_count": 1,
+    "executed_ok": true
+  },
+  {
+    "track_id": "Track00010",
+    "role": "session_guitarist",
+    "abstraction_level": "technical_parametric",
+    "hook": "harmonic exciter 15% mix on the high band (4-10 kHz)",
+    "primary_intent": "instrument_layer",
+    "primary_tool": "layer_instrument",
+    "target_track": "synth_pad_2",
+    "motivation": "Production motivation: Layered the pad 7 with Pad 2 (GM 2) at 50% mix for harmonic exciter texture on 4-10 kHz, highpassing the acoustic guitar at 200 Hz and lowpassing drums at 1.2 kHz to carve space, widening the pad to 1.4x.",
+    "tool_calls": [
+      {
+        "name": "layer_instrument",
+        "arguments": {
+          "track": "synth_pad_2",
+          "additional_program": 2,
+          "mix_ratio": 0.5
+        }
+      },
+      {
+        "name": "apply_fx",
+        "arguments": {
+          "track": "guitar_1",
+          "call": {
+            "effect": "am_highpass_filter",
+            "params": {
+              "cutoff_freq": 200.0,
+              "rolloff": 12.0
+            }
+          }
+        }
+      },
+      {
+        "name": "apply_fx",
+        "arguments": {
+          "track": "drums",
+          "call": {
+            "effect": "am_lowpass_filter",
+            "params": {
+              "cutoff_freq": 1200.0,
+              "rolloff": 12.0
+            }
+          }
+        }
+      },
+      {
+        "name": "apply_fx",
+        "arguments": {
+          "track": "synth_pad_2",
+          "call": {
+            "effect": "npy_stereo_widener",
+            "params": {
+              "width": 1.4
+            }
+          }
+        }
+      },
+      {
+        "name": "apply_fx",
+        "arguments": {
+          "track": "synth_pad_2",
+          "call": {
+            "effect": "am_peaking_filter",
+            "params": {
+              "center_freq": 6000.0,
+              "gain_db": 4.0,
+              "q": 1.0
+            }
+          }
+        }
+      }
+    ],
+    "original_mp3": "audio/case_07_Track00010_original.mp3",
+    "modified_mp3": "audio/case_07_Track00010_modified.mp3",
+    "original_midi": "midi/case_07_Track00010_original.mid",
+    "modified_midi": "midi/case_07_Track00010_modified.mid",
+    "pre_instruments": [
+      {
+        "name": "bass",
+        "program": 33,
+        "is_drum": false,
+        "midi_program_name": "Electric Bass (finger)",
+        "inst_class": "Bass"
+      },
+      {
+        "name": "guitar_1",
+        "program": 25,
+        "is_drum": false,
+        "midi_program_name": "Acoustic Guitar (steel)",
+        "inst_class": "Guitar"
+      },
+      {
+        "name": "synth_pad_2",
+        "program": 94,
+        "is_drum": false,
+        "midi_program_name": "Pad 7 (halo)",
+        "inst_class": "Synth Pad"
+      },
+      {
+        "name": "piano",
+        "program": 3,
+        "is_drum": false,
+        "midi_program_name": "Honky-tonk Piano",
+        "inst_class": "Piano"
+      },
+      {
+        "name": "drums",
+        "program": 128,
+        "is_drum": true,
+        "midi_program_name": "Drums",
+        "inst_class": "Drums"
+      }
+    ],
+    "post_instruments": [
+      {
+        "name": "bass",
+        "program": 33,
+        "is_drum": false,
+        "midi_program_name": "Electric Bass (finger)",
+        "inst_class": "Bass"
+      },
+      {
+        "name": "guitar_1",
+        "program": 25,
+        "is_drum": false,
+        "midi_program_name": "Acoustic Guitar (steel)",
+        "inst_class": "Guitar"
+      },
+      {
+        "name": "synth_pad_2",
+        "program": 94,
+        "is_drum": false,
+        "midi_program_name": "Pad 7 (halo)",
+        "inst_class": "Synth Pad"
+      },
+      {
+        "name": "piano",
+        "program": 3,
+        "is_drum": false,
+        "midi_program_name": "Honky-tonk Piano",
+        "inst_class": "Piano"
+      },
+      {
+        "name": "drums",
+        "program": 128,
+        "is_drum": true,
+        "midi_program_name": "Drums",
+        "inst_class": "Drums"
+      }
+    ],
+    "attempt_count": 1,
+    "executed_ok": true
+  },
+  {
+    "track_id": "Track00007",
+    "role": "session_keyboardist",
+    "abstraction_level": "negative_space",
+    "hook": "no AI-slick smoothness \u2014 leave human imperfection",
+    "primary_intent": "extract_track",
+    "primary_tool": "extract_track_op",
+    "target_track": "piano_1",
+    "motivation": "Production motivation: Isolate the first bright acoustic piano to hear its melodic lines clearly before final mixing.",
+    "tool_calls": [],
+    "original_mp3": "audio/case_08_Track00007_original.mp3",
+    "modified_mp3": "audio/case_08_Track00007_modified.mp3",
+    "original_midi": "midi/case_08_Track00007_original.mid",
+    "modified_midi": "midi/case_08_Track00007_modified.mid",
+    "pre_instruments": [
+      {
+        "name": "drums",
+        "program": 128,
+        "is_drum": true,
+        "midi_program_name": "Drums",
+        "inst_class": "Drums"
+      },
+      {
+        "name": "piano_1",
+        "program": 1,
+        "is_drum": false,
+        "midi_program_name": "Bright Acoustic Piano",
+        "inst_class": "Piano"
+      },
+      {
+        "name": "bass",
+        "program": 33,
+        "is_drum": false,
+        "midi_program_name": "Electric Bass (finger)",
+        "inst_class": "Bass"
+      },
+      {
+        "name": "piano_2",
+        "program": 4,
+        "is_drum": false,
+        "midi_program_name": "Electric Piano 1",
+        "inst_class": "Piano"
+      },
+      {
+        "name": "guitar_1",
+        "program": 27,
+        "is_drum": false,
+        "midi_program_name": "Electric Guitar (clean)",
+        "inst_class": "Guitar"
+      },
+      {
+        "name": "strings__continued",
+        "program": 52,
+        "is_drum": false,
+        "midi_program_name": "Choir Aahs",
+        "inst_class": "Strings (continued)"
+      },
+      {
+        "name": "guitar_2",
+        "program": 26,
+        "is_drum": false,
+        "midi_program_name": "Electric Guitar (jazz)",
+        "inst_class": "Guitar"
+      },
+      {
+        "name": "piano_3",
+        "program": 1,
+        "is_drum": false,
+        "midi_program_name": "Bright Acoustic Piano",
+        "inst_class": "Piano"
+      }
+    ],
+    "post_instruments": [
+      {
+        "name": "piano_1",
+        "program": 1,
+        "is_drum": false,
+        "midi_program_name": "Bright Acoustic Piano",
+        "inst_class": "Piano"
+      }
+    ],
+    "attempt_count": 1,
+    "executed_ok": true
+  },
+  {
+    "track_id": "Track00006",
+    "role": "artist_instrumentalist",
+    "abstraction_level": "negative_space",
+    "hook": "don't let the stereo bus exceed 1.2\u00d7 width",
+    "primary_intent": "performance_articulation",
+    "primary_tool": "change_articulation",
+    "target_track": "strings__continued_1",
+    "motivation": "Production motivation: The first string ensemble 1 should be legato to avoid sounding too staccato and muddy, and don't let the stereo bus exceed 1.2\u00d7 width.",
+    "tool_calls": [
+      {
+        "name": "change_articulation",
+        "arguments": {
+          "track": "strings__continued_1",
+          "style": "legato"
+        }
+      },
+      {
+        "name": "apply_fx",
+        "arguments": {
+          "track": "mix",
+          "call": {
+            "effect": "npy_stereo_widener",
+            "params": {
+              "width": 1.2
+            }
+          }
+        }
+      },
+      {
+        "name": "apply_fx",
+        "arguments": {
+          "track": "strings__continued_1",
+          "call": {
+            "effect": "am_lowpass_filter",
+            "params": {
+              "cutoff_freq": 1800.0,
+              "rolloff": 12.0
+            }
+          }
+        }
+      },
+      {
+        "name": "apply_fx",
+        "arguments": {
+          "track": "piano",
+          "call": {
+            "effect": "am_highpass_filter",
+            "params": {
+              "cutoff_freq": 250.0,
+              "rolloff": 12.0
+            }
+          }
+        }
+      },
+      {
+        "name": "apply_fx",
+        "arguments": {
+          "track": "bass",
+          "call": {
+            "effect": "am_highpass_filter",
+            "params": {
+              "cutoff_freq": 80.0,
+              "rolloff": 12.0
+            }
+          }
+        }
+      },
+      {
+        "name": "apply_fx",
+        "arguments": {
+          "track": "guitar_3",
+          "call": {
+            "effect": "am_lowpass_filter",
+            "params": {
+              "cutoff_freq": 3000.0,
+              "rolloff": 12.0
+            }
+          }
+        }
+      },
+      {
+        "name": "apply_fx",
+        "arguments": {
+          "track": "strings__continued_2",
+          "call": {
+            "effect": "npy_lr_pan",
+            "params": {
+              "pan": -0.3
             }
           }
         }
@@ -1224,7 +1775,7 @@
           "call": {
             "effect": "am_lowpass_filter",
             "params": {
-              "cutoff_freq": 3500.0,
+              "cutoff_freq": 4000.0,
               "rolloff": 12.0
             }
           }
@@ -1233,104 +1784,12 @@
       {
         "name": "apply_fx",
         "arguments": {
-          "track": "bass",
+          "track": "brass_2",
           "call": {
-            "effect": "am_gain",
+            "effect": "am_bandstop_filter",
             "params": {
-              "gain_db": 3.0
-            }
-          }
-        }
-      },
-      {
-        "name": "apply_fx",
-        "arguments": {
-          "track": "pipe_3",
-          "call": {
-            "effect": "npy_stereo_widener",
-            "params": {
-              "width": 1.5
-            }
-          }
-        }
-      },
-      {
-        "name": "apply_fx",
-        "arguments": {
-          "track": "guitar_1",
-          "call": {
-            "effect": "am_peaking_filter",
-            "params": {
-              "center_freq": 2500.0,
-              "gain_db": 4.0,
-              "q": 1.0
-            }
-          }
-        }
-      },
-      {
-        "name": "apply_fx",
-        "arguments": {
-          "track": "chromatic_percussion",
-          "call": {
-            "effect": "am_low_shelf_filter",
-            "params": {
-              "center_freq": 500.0,
-              "gain_db": -3.0,
-              "q": 0.7
-            }
-          }
-        }
-      },
-      {
-        "name": "apply_fx",
-        "arguments": {
-          "track": "piano_2",
-          "call": {
-            "effect": "am_bit_crush",
-            "params": {
-              "bit_depth": 10.0
-            }
-          }
-        }
-      },
-      {
-        "name": "apply_fx",
-        "arguments": {
-          "track": "pipe_2",
-          "call": {
-            "effect": "am_gain",
-            "params": {
-              "gain_db": 2.0
-            }
-          }
-        }
-      },
-      {
-        "name": "apply_fx",
-        "arguments": {
-          "track": "strings__continued",
-          "call": {
-            "effect": "sox_chorus",
-            "params": {
-              "gain_in": 0.7,
-              "gain_out": 0.5,
-              "delay_ms": 40.0,
-              "decay": 0.4,
-              "speed": 1.0,
-              "depth": 3.0
-            }
-          }
-        }
-      },
-      {
-        "name": "apply_fx",
-        "arguments": {
-          "track": "drums",
-          "call": {
-            "effect": "am_lowpass_filter",
-            "params": {
-              "cutoff_freq": 7000.0,
+              "center_freq": 1500.0,
+              "bandwidth_fraction": 1.2,
               "rolloff": 12.0
             }
           }
@@ -1339,210 +1798,21 @@
       {
         "name": "apply_fx",
         "arguments": {
-          "track": "bass",
+          "track": "brass_3",
           "call": {
-            "effect": "sox_compand",
+            "effect": "am_highpass_filter",
             "params": {
-              "attack_time": 0.02,
-              "decay_time": 0.1,
-              "soft_knee_db": 4.0
-            }
-          }
-        }
-      },
-      {
-        "name": "apply_fx",
-        "arguments": {
-          "track": "mix",
-          "call": {
-            "effect": "sox_reverb",
-            "params": {
-              "reverberance": 60.0,
-              "wet_gain": -3.0
+              "cutoff_freq": 500.0,
+              "rolloff": 12.0
             }
           }
         }
       }
     ],
-    "original_mp3": "audio/case_05_Track00005_original.mp3",
-    "modified_mp3": "audio/case_05_Track00005_modified.mp3",
-    "original_midi": "midi/case_05_Track00005_original.mid",
-    "modified_midi": "midi/case_05_Track00005_modified.mid",
-    "pre_instruments": [
-      {
-        "name": "drums",
-        "program": 128,
-        "is_drum": true,
-        "midi_program_name": "Drums",
-        "inst_class": "Drums"
-      },
-      {
-        "name": "guitar_1",
-        "program": 25,
-        "is_drum": false,
-        "midi_program_name": "Acoustic Guitar (steel)",
-        "inst_class": "Guitar"
-      },
-      {
-        "name": "piano_1",
-        "program": 0,
-        "is_drum": false,
-        "midi_program_name": "Acoustic Grand Piano",
-        "inst_class": "Piano"
-      },
-      {
-        "name": "bass",
-        "program": 33,
-        "is_drum": false,
-        "midi_program_name": "Electric Bass (finger)",
-        "inst_class": "Bass"
-      },
-      {
-        "name": "chromatic_percussion",
-        "program": 9,
-        "is_drum": false,
-        "midi_program_name": "Glockenspiel",
-        "inst_class": "Chromatic Percussion"
-      },
-      {
-        "name": "piano_2",
-        "program": 5,
-        "is_drum": false,
-        "midi_program_name": "Electric Piano 2",
-        "inst_class": "Piano"
-      },
-      {
-        "name": "pipe_2",
-        "program": 73,
-        "is_drum": false,
-        "midi_program_name": "Flute",
-        "inst_class": "Pipe"
-      },
-      {
-        "name": "guitar_2",
-        "program": 29,
-        "is_drum": false,
-        "midi_program_name": "Overdriven Guitar",
-        "inst_class": "Guitar"
-      },
-      {
-        "name": "pipe_3",
-        "program": 75,
-        "is_drum": false,
-        "midi_program_name": "Pan Flute",
-        "inst_class": "Pipe"
-      },
-      {
-        "name": "strings__continued",
-        "program": 50,
-        "is_drum": false,
-        "midi_program_name": "Synth Strings 1",
-        "inst_class": "Strings (continued)"
-      },
-      {
-        "name": "reed",
-        "program": 64,
-        "is_drum": false,
-        "midi_program_name": "Soprano Sax",
-        "inst_class": "Reed"
-      }
-    ],
-    "post_instruments": [
-      {
-        "name": "drums",
-        "program": 128,
-        "is_drum": true,
-        "midi_program_name": "Drums",
-        "inst_class": "Drums"
-      },
-      {
-        "name": "guitar_1",
-        "program": 25,
-        "is_drum": false,
-        "midi_program_name": "Acoustic Guitar (steel)",
-        "inst_class": "Guitar"
-      },
-      {
-        "name": "piano_1",
-        "program": 0,
-        "is_drum": false,
-        "midi_program_name": "Acoustic Grand Piano",
-        "inst_class": "Piano"
-      },
-      {
-        "name": "bass",
-        "program": 33,
-        "is_drum": false,
-        "midi_program_name": "Electric Bass (finger)",
-        "inst_class": "Bass"
-      },
-      {
-        "name": "chromatic_percussion",
-        "program": 9,
-        "is_drum": false,
-        "midi_program_name": "Glockenspiel",
-        "inst_class": "Chromatic Percussion"
-      },
-      {
-        "name": "piano_2",
-        "program": 5,
-        "is_drum": false,
-        "midi_program_name": "Electric Piano 2",
-        "inst_class": "Piano"
-      },
-      {
-        "name": "pipe_2",
-        "program": 73,
-        "is_drum": false,
-        "midi_program_name": "Flute",
-        "inst_class": "Pipe"
-      },
-      {
-        "name": "guitar_2",
-        "program": 29,
-        "is_drum": false,
-        "midi_program_name": "Overdriven Guitar",
-        "inst_class": "Guitar"
-      },
-      {
-        "name": "pipe_3",
-        "program": 75,
-        "is_drum": false,
-        "midi_program_name": "Pan Flute",
-        "inst_class": "Pipe"
-      },
-      {
-        "name": "strings__continued",
-        "program": 50,
-        "is_drum": false,
-        "midi_program_name": "Synth Strings 1",
-        "inst_class": "Strings (continued)"
-      },
-      {
-        "name": "reed",
-        "program": 64,
-        "is_drum": false,
-        "midi_program_name": "Soprano Sax",
-        "inst_class": "Reed"
-      }
-    ],
-    "attempt_count": 1,
-    "executed_ok": true
-  },
-  {
-    "track_id": "Track00006",
-    "role": "mixing_engineer_self_note",
-    "abstraction_level": "emotional_perceptual",
-    "hook": "electric and crackling, a storm rolling in",
-    "primary_intent": "extract_track",
-    "primary_tool": "extract_track_op",
-    "target_track": "reed",
-    "motivation": "Production motivation: Isolate the alto sax so that we can focus on its expressive phrasing and clearly hear the melodic line in the arrangement.",
-    "tool_calls": [],
-    "original_mp3": "audio/case_06_Track00006_original.mp3",
-    "modified_mp3": "audio/case_06_Track00006_modified.mp3",
-    "original_midi": "midi/case_06_Track00006_original.mid",
-    "modified_midi": "midi/case_06_Track00006_modified.mid",
+    "original_mp3": "audio/case_09_Track00006_original.mp3",
+    "modified_mp3": "audio/case_09_Track00006_modified.mp3",
+    "original_midi": "midi/case_09_Track00006_original.mid",
+    "modified_midi": "midi/case_09_Track00006_modified.mid",
     "pre_instruments": [
       {
         "name": "drums",
@@ -1631,187 +1901,6 @@
     ],
     "post_instruments": [
       {
-        "name": "reed",
-        "program": 65,
-        "is_drum": false,
-        "midi_program_name": "Alto Sax",
-        "inst_class": "Reed"
-      }
-    ],
-    "attempt_count": 1,
-    "executed_ok": true
-  },
-  {
-    "track_id": "Track00007",
-    "role": "non_musician_client",
-    "abstraction_level": "emotional_perceptual",
-    "hook": "dreamy and unhurried, half-asleep in a moving train",
-    "primary_intent": "instrument_swap",
-    "primary_tool": "change_instrument",
-    "target_track": "guitar_1, piano_2, bass",
-    "motivation": "Production motivation: Make the electric guitar, electric piano 1, and electric bass feel dreamy and unhurried, half-asleep in a moving train.",
-    "tool_calls": [
-      {
-        "name": "change_instrument",
-        "arguments": {
-          "track": "guitar_1",
-          "to_program": 32
-        }
-      },
-      {
-        "name": "change_instrument",
-        "arguments": {
-          "track": "piano_2",
-          "to_program": 40
-        }
-      },
-      {
-        "name": "change_instrument",
-        "arguments": {
-          "track": "bass",
-          "to_program": 53
-        }
-      },
-      {
-        "name": "apply_fx",
-        "arguments": {
-          "track": "mix",
-          "call": {
-            "effect": "sox_reverb",
-            "params": {
-              "reverberance": 55.0,
-              "wet_gain": -3.5
-            }
-          }
-        }
-      },
-      {
-        "name": "apply_fx",
-        "arguments": {
-          "track": "guitar_1",
-          "call": {
-            "effect": "sox_tremolo",
-            "params": {
-              "speed": 2.8,
-              "depth": 35.0
-            }
-          }
-        }
-      },
-      {
-        "name": "apply_fx",
-        "arguments": {
-          "track": "strings__continued",
-          "call": {
-            "effect": "sox_chorus",
-            "params": {
-              "gain_in": 0.85,
-              "gain_out": 0.45,
-              "delay_ms": 60.0,
-              "decay": 0.25,
-              "speed": 1.5,
-              "depth": 4.0
-            }
-          }
-        }
-      },
-      {
-        "name": "apply_fx",
-        "arguments": {
-          "track": "piano_1",
-          "call": {
-            "effect": "am_lowpass_filter",
-            "params": {
-              "cutoff_freq": 3200.0,
-              "rolloff": 18.0
-            }
-          }
-        }
-      },
-      {
-        "name": "apply_fx",
-        "arguments": {
-          "track": "guitar_2",
-          "call": {
-            "effect": "am_bit_crush",
-            "params": {
-              "bit_depth": 10.0
-            }
-          }
-        }
-      },
-      {
-        "name": "apply_fx",
-        "arguments": {
-          "track": "drums",
-          "call": {
-            "effect": "sox_compand",
-            "params": {
-              "attack_time": 0.02,
-              "decay_time": 0.12,
-              "soft_knee_db": 5.0
-            }
-          }
-        }
-      },
-      {
-        "name": "apply_fx",
-        "arguments": {
-          "track": "bass",
-          "call": {
-            "effect": "am_highpass_filter",
-            "params": {
-              "cutoff_freq": 85.0,
-              "rolloff": 15.0
-            }
-          }
-        }
-      },
-      {
-        "name": "apply_fx",
-        "arguments": {
-          "track": "piano_3",
-          "call": {
-            "effect": "sox_equalizer",
-            "params": {
-              "frequency": 1200.0,
-              "width_q": 2.5,
-              "gain_db": 4.5
-            }
-          }
-        }
-      },
-      {
-        "name": "apply_fx",
-        "arguments": {
-          "track": "piano_2",
-          "call": {
-            "effect": "am_tanh_distortion",
-            "params": {
-              "distortion": 0.2
-            }
-          }
-        }
-      },
-      {
-        "name": "apply_fx",
-        "arguments": {
-          "track": "guitar_1",
-          "call": {
-            "effect": "am_gain",
-            "params": {
-              "gain_db": 1.5
-            }
-          }
-        }
-      }
-    ],
-    "original_mp3": "audio/case_07_Track00007_original.mp3",
-    "modified_mp3": "audio/case_07_Track00007_modified.mp3",
-    "original_midi": "midi/case_07_Track00007_original.mid",
-    "modified_midi": "midi/case_07_Track00007_modified.mid",
-    "pre_instruments": [
-      {
         "name": "drums",
         "program": 128,
         "is_drum": true,
@@ -1819,97 +1908,60 @@
         "inst_class": "Drums"
       },
       {
-        "name": "piano_1",
-        "program": 1,
-        "is_drum": false,
-        "midi_program_name": "Bright Acoustic Piano",
-        "inst_class": "Piano"
-      },
-      {
-        "name": "bass",
-        "program": 33,
-        "is_drum": false,
-        "midi_program_name": "Electric Bass (finger)",
-        "inst_class": "Bass"
-      },
-      {
-        "name": "piano_2",
+        "name": "piano",
         "program": 4,
         "is_drum": false,
         "midi_program_name": "Electric Piano 1",
         "inst_class": "Piano"
       },
       {
-        "name": "guitar_1",
-        "program": 27,
+        "name": "brass_1",
+        "program": 56,
         "is_drum": false,
-        "midi_program_name": "Electric Guitar (clean)",
-        "inst_class": "Guitar"
-      },
-      {
-        "name": "strings__continued",
-        "program": 52,
-        "is_drum": false,
-        "midi_program_name": "Choir Aahs",
-        "inst_class": "Strings (continued)"
-      },
-      {
-        "name": "guitar_2",
-        "program": 26,
-        "is_drum": false,
-        "midi_program_name": "Electric Guitar (jazz)",
-        "inst_class": "Guitar"
-      },
-      {
-        "name": "piano_3",
-        "program": 1,
-        "is_drum": false,
-        "midi_program_name": "Bright Acoustic Piano",
-        "inst_class": "Piano"
-      }
-    ],
-    "post_instruments": [
-      {
-        "name": "drums",
-        "program": 128,
-        "is_drum": true,
-        "midi_program_name": "Drums",
-        "inst_class": "Drums"
-      },
-      {
-        "name": "piano_1",
-        "program": 1,
-        "is_drum": false,
-        "midi_program_name": "Bright Acoustic Piano",
-        "inst_class": "Piano"
+        "midi_program_name": "Trumpet",
+        "inst_class": "Brass"
       },
       {
         "name": "bass",
-        "program": 53,
+        "program": 35,
         "is_drum": false,
-        "midi_program_name": "Electric Bass (finger)",
+        "midi_program_name": "Fretless Bass",
         "inst_class": "Bass"
       },
       {
-        "name": "piano_2",
-        "program": 40,
+        "name": "strings__continued_1",
+        "program": 48,
         "is_drum": false,
-        "midi_program_name": "Electric Piano 1",
-        "inst_class": "Piano"
-      },
-      {
-        "name": "guitar_1",
-        "program": 32,
-        "is_drum": false,
-        "midi_program_name": "Electric Guitar (clean)",
-        "inst_class": "Guitar"
-      },
-      {
-        "name": "strings__continued",
-        "program": 52,
-        "is_drum": false,
-        "midi_program_name": "Choir Aahs",
+        "midi_program_name": "String Ensemble 1",
         "inst_class": "Strings (continued)"
+      },
+      {
+        "name": "strings__continued_2",
+        "program": 48,
+        "is_drum": false,
+        "midi_program_name": "String Ensemble 1",
+        "inst_class": "Strings (continued)"
+      },
+      {
+        "name": "brass_2",
+        "program": 60,
+        "is_drum": false,
+        "midi_program_name": "French Horn",
+        "inst_class": "Brass"
+      },
+      {
+        "name": "brass_3",
+        "program": 57,
+        "is_drum": false,
+        "midi_program_name": "Trombone",
+        "inst_class": "Brass"
+      },
+      {
+        "name": "reed",
+        "program": 65,
+        "is_drum": false,
+        "midi_program_name": "Alto Sax",
+        "inst_class": "Reed"
       },
       {
         "name": "guitar_2",
@@ -1919,55 +1971,38 @@
         "inst_class": "Guitar"
       },
       {
-        "name": "piano_3",
-        "program": 1,
+        "name": "guitar_3",
+        "program": 29,
         "is_drum": false,
-        "midi_program_name": "Bright Acoustic Piano",
-        "inst_class": "Piano"
+        "midi_program_name": "Overdriven Guitar",
+        "inst_class": "Guitar"
+      },
+      {
+        "name": "pipe",
+        "program": 73,
+        "is_drum": false,
+        "midi_program_name": "Flute",
+        "inst_class": "Pipe"
       }
     ],
     "attempt_count": 1,
     "executed_ok": true
   },
   {
-    "track_id": "Track00008",
+    "track_id": "Track00020",
     "role": "producer",
-    "abstraction_level": "emotional_perceptual",
-    "hook": "unadorned and simple, bread and butter",
-    "primary_intent": "arrangement_remove",
-    "primary_tool": "remove_track",
-    "target_track": "piano_2, piano_1, guitar",
-    "motivation": "Production motivation: Strip the acoustic grand piano, the electric piano 2, and guitar down to nothing\u2014this mix needs to breathe unadorned and simple, bread and butter, not fight for space.",
+    "abstraction_level": "technical_parametric",
+    "hook": "transient shaper +3 dB attack on snare",
+    "primary_intent": "performance_timing",
+    "primary_tool": "humanize_timing",
+    "target_track": "piano_2",
+    "motivation": "Production motivation: Humanize the electric piano 1 with \u00b120ms timing jitter for organic groove, apply 150Hz lowpass on bass to carve mud, add 50ms slapback echo on guitar, widen the synth strings 1 to 1.4 stereo width, and apply 0.15 distortion on the electric piano 1 for warm saturation.",
     "tool_calls": [
       {
-        "name": "remove_track",
+        "name": "humanize_timing",
         "arguments": {
-          "track_name": "piano_2"
-        }
-      },
-      {
-        "name": "remove_track",
-        "arguments": {
-          "track_name": "piano_1"
-        }
-      },
-      {
-        "name": "remove_track",
-        "arguments": {
-          "track_name": "guitar"
-        }
-      },
-      {
-        "name": "apply_fx",
-        "arguments": {
-          "track": "drums",
-          "call": {
-            "effect": "sox_reverb",
-            "params": {
-              "reverberance": 60.0,
-              "wet_gain": -3.0
-            }
-          }
+          "track": "piano_2",
+          "max_offset_ms": 20.0
         }
       },
       {
@@ -1977,304 +2012,7 @@
           "call": {
             "effect": "am_lowpass_filter",
             "params": {
-              "cutoff_freq": 2000.0,
-              "rolloff": 12.0
-            }
-          }
-        }
-      },
-      {
-        "name": "apply_fx",
-        "arguments": {
-          "track": "strings__continued",
-          "call": {
-            "effect": "am_highpass_filter",
-            "params": {
-              "cutoff_freq": 250.0,
-              "rolloff": 12.0
-            }
-          }
-        }
-      },
-      {
-        "name": "apply_fx",
-        "arguments": {
-          "track": "synth_pad",
-          "call": {
-            "effect": "sox_treble",
-            "params": {
-              "gain_db": 6.0,
-              "frequency": 5000.0,
-              "slope": 0.5
-            }
-          }
-        }
-      },
-      {
-        "name": "apply_fx",
-        "arguments": {
-          "track": "mix",
-          "call": {
-            "effect": "sox_compand",
-            "params": {
-              "attack_time": 0.02,
-              "decay_time": 0.3,
-              "soft_knee_db": 6.0
-            }
-          }
-        }
-      },
-      {
-        "name": "apply_fx",
-        "arguments": {
-          "track": "bass",
-          "call": {
-            "effect": "sox_overdrive",
-            "params": {
-              "gain_db": 12.0,
-              "colour": 50.0
-            }
-          }
-        }
-      },
-      {
-        "name": "apply_fx",
-        "arguments": {
-          "track": "strings__continued",
-          "call": {
-            "effect": "sox_chorus",
-            "params": {
-              "gain_in": 0.7,
-              "gain_out": 0.5,
-              "delay_ms": 40.0,
-              "decay": 0.3,
-              "speed": 1.5,
-              "depth": 2.0
-            }
-          }
-        }
-      },
-      {
-        "name": "apply_fx",
-        "arguments": {
-          "track": "synth_pad",
-          "call": {
-            "effect": "am_bit_crush",
-            "params": {
-              "bit_depth": 10.0
-            }
-          }
-        }
-      },
-      {
-        "name": "apply_fx",
-        "arguments": {
-          "track": "drums",
-          "call": {
-            "effect": "am_peaking_filter",
-            "params": {
-              "center_freq": 800.0,
-              "gain_db": 8.0,
-              "q": 1.2
-            }
-          }
-        }
-      },
-      {
-        "name": "apply_fx",
-        "arguments": {
-          "track": "mix",
-          "call": {
-            "effect": "am_loudness_normalization",
-            "params": {
-              "lufs": -19.0
-            }
-          }
-        }
-      },
-      {
-        "name": "apply_fx",
-        "arguments": {
-          "track": "bass",
-          "call": {
-            "effect": "sci_butter_highpass",
-            "params": {
-              "order": 4.0,
-              "cutoff": 40.0
-            }
-          }
-        }
-      },
-      {
-        "name": "apply_fx",
-        "arguments": {
-          "track": "strings__continued",
-          "call": {
-            "effect": "sox_reverb",
-            "params": {
-              "reverberance": 75.0,
-              "room_scale": 80.0,
-              "wet_gain": -1.0
-            }
-          }
-        }
-      },
-      {
-        "name": "apply_fx",
-        "arguments": {
-          "track": "synth_pad",
-          "call": {
-            "effect": "sox_echo",
-            "params": {
-              "gain_in": 0.8,
-              "gain_out": 0.4,
-              "delay_ms": 150.0,
-              "decay": 0.4
-            }
-          }
-        }
-      },
-      {
-        "name": "apply_fx",
-        "arguments": {
-          "track": "mix",
-          "call": {
-            "effect": "am_gain_transition",
-            "params": {
-              "gain_db": 2.0,
-              "duration": 1.5
-            }
-          }
-        }
-      }
-    ],
-    "original_mp3": "audio/case_08_Track00008_original.mp3",
-    "modified_mp3": "audio/case_08_Track00008_modified.mp3",
-    "original_midi": "midi/case_08_Track00008_original.mid",
-    "modified_midi": "midi/case_08_Track00008_modified.mid",
-    "pre_instruments": [
-      {
-        "name": "bass",
-        "program": 35,
-        "is_drum": false,
-        "midi_program_name": "Fretless Bass",
-        "inst_class": "Bass"
-      },
-      {
-        "name": "drums",
-        "program": 128,
-        "is_drum": true,
-        "midi_program_name": "Drums",
-        "inst_class": "Drums"
-      },
-      {
-        "name": "piano_1",
-        "program": 5,
-        "is_drum": false,
-        "midi_program_name": "Electric Piano 2",
-        "inst_class": "Piano"
-      },
-      {
-        "name": "guitar",
-        "program": 27,
-        "is_drum": false,
-        "midi_program_name": "Electric Guitar (clean)",
-        "inst_class": "Guitar"
-      },
-      {
-        "name": "strings__continued",
-        "program": 49,
-        "is_drum": false,
-        "midi_program_name": "String Ensemble 2",
-        "inst_class": "Strings (continued)"
-      },
-      {
-        "name": "piano_2",
-        "program": 0,
-        "is_drum": false,
-        "midi_program_name": "Acoustic Grand Piano",
-        "inst_class": "Piano"
-      },
-      {
-        "name": "synth_pad",
-        "program": 91,
-        "is_drum": false,
-        "midi_program_name": "Pad 4 (choir)",
-        "inst_class": "Synth Pad"
-      }
-    ],
-    "post_instruments": [
-      {
-        "name": "bass",
-        "program": 35,
-        "is_drum": false,
-        "midi_program_name": "Fretless Bass",
-        "inst_class": "Bass"
-      },
-      {
-        "name": "drums",
-        "program": 128,
-        "is_drum": true,
-        "midi_program_name": "Drums",
-        "inst_class": "Drums"
-      },
-      {
-        "name": "strings__continued",
-        "program": 49,
-        "is_drum": false,
-        "midi_program_name": "String Ensemble 2",
-        "inst_class": "Strings (continued)"
-      },
-      {
-        "name": "synth_pad",
-        "program": 91,
-        "is_drum": false,
-        "midi_program_name": "Pad 4 (choir)",
-        "inst_class": "Synth Pad"
-      }
-    ],
-    "attempt_count": 1,
-    "executed_ok": true
-  },
-  {
-    "track_id": "Track00009",
-    "role": "producer",
-    "abstraction_level": "scene_metaphor",
-    "hook": "like fireworks heard from indoors",
-    "primary_intent": "arrangement_add",
-    "primary_tool": "add_track",
-    "target_track": "guitar, strings__continued_3, chromatic_percussion_2",
-    "motivation": "Production motivation: Layer in the glockenspiel, the second choir aahs, and the electric guitar like fireworks heard from indoors \u2013 bright, layered, and crackling with spatial energy.",
-    "tool_calls": [
-      {
-        "name": "add_track",
-        "arguments": {
-          "track_name": "guitar",
-          "program": 28
-        }
-      },
-      {
-        "name": "add_track",
-        "arguments": {
-          "track_name": "strings__continued_3",
-          "program": 52
-        }
-      },
-      {
-        "name": "add_track",
-        "arguments": {
-          "track_name": "chromatic_percussion_2",
-          "program": 9
-        }
-      },
-      {
-        "name": "apply_fx",
-        "arguments": {
-          "track": "chromatic_percussion_2",
-          "call": {
-            "effect": "am_highpass_filter",
-            "params": {
-              "cutoff_freq": 1000.0,
+              "cutoff_freq": 150.0,
               "rolloff": 12.0
             }
           }
@@ -2285,9 +2023,12 @@
         "arguments": {
           "track": "guitar",
           "call": {
-            "effect": "sox_overdrive",
+            "effect": "sox_echo",
             "params": {
-              "gain_db": 15.0
+              "gain_in": 0.7,
+              "gain_out": 0.5,
+              "delay_ms": 50.0,
+              "decay": 0.4
             }
           }
         }
@@ -2297,10 +2038,9 @@
         "arguments": {
           "track": "strings__continued_3",
           "call": {
-            "effect": "sox_reverb",
+            "effect": "npy_stereo_widener",
             "params": {
-              "reverberance": 60.0,
-              "wet_gain": -4.0
+              "width": 1.4
             }
           }
         }
@@ -2308,37 +2048,11 @@
       {
         "name": "apply_fx",
         "arguments": {
-          "track": "bass",
-          "call": {
-            "effect": "am_peaking_filter",
-            "params": {
-              "center_freq": 150.0,
-              "gain_db": 8.0,
-              "q": 0.5
-            }
-          }
-        }
-      },
-      {
-        "name": "apply_fx",
-        "arguments": {
-          "track": "drums",
-          "call": {
-            "effect": "am_bit_crush",
-            "params": {
-              "bit_depth": 10.0
-            }
-          }
-        }
-      },
-      {
-        "name": "apply_fx",
-        "arguments": {
-          "track": "reed",
+          "track": "piano_2",
           "call": {
             "effect": "am_tanh_distortion",
             "params": {
-              "distortion": 0.2
+              "distortion": 0.15
             }
           }
         }
@@ -2346,57 +2060,29 @@
       {
         "name": "apply_fx",
         "arguments": {
-          "track": "mix",
+          "track": "drums",
           "call": {
             "effect": "sox_compand",
             "params": {
-              "attack_time": 0.005,
+              "attack_time": 0.05,
               "decay_time": 0.1,
-              "soft_knee_db": 6.0
+              "soft_knee_db": 5.0
             }
           }
         }
       }
     ],
-    "original_mp3": "audio/case_09_Track00009_original.mp3",
-    "modified_mp3": "audio/case_09_Track00009_modified.mp3",
-    "original_midi": "midi/case_09_Track00009_original.mid",
-    "modified_midi": "midi/case_09_Track00009_modified.mid",
+    "original_mp3": "audio/case_10_Track00020_original.mp3",
+    "modified_mp3": "audio/case_10_Track00020_modified.mp3",
+    "original_midi": "midi/case_10_Track00020_original.mid",
+    "modified_midi": "midi/case_10_Track00020_modified.mid",
     "pre_instruments": [
       {
-        "name": "piano",
-        "program": 1,
-        "is_drum": false,
-        "midi_program_name": "Bright Acoustic Piano",
-        "inst_class": "Piano"
-      },
-      {
-        "name": "chromatic_percussion_1",
-        "program": 10,
-        "is_drum": false,
-        "midi_program_name": "Music Box",
-        "inst_class": "Chromatic Percussion"
-      },
-      {
-        "name": "chromatic_percussion_3",
-        "program": 10,
-        "is_drum": false,
-        "midi_program_name": "Music Box",
-        "inst_class": "Chromatic Percussion"
-      },
-      {
-        "name": "strings__continued_1",
-        "program": 52,
-        "is_drum": false,
-        "midi_program_name": "Choir Aahs",
-        "inst_class": "Strings (continued)"
-      },
-      {
-        "name": "reed",
-        "program": 68,
-        "is_drum": false,
-        "midi_program_name": "Oboe",
-        "inst_class": "Reed"
+        "name": "drums",
+        "program": 128,
+        "is_drum": true,
+        "midi_program_name": "Drums",
+        "inst_class": "Drums"
       },
       {
         "name": "bass",
@@ -2406,252 +2092,70 @@
         "inst_class": "Bass"
       },
       {
-        "name": "drums",
-        "program": 128,
-        "is_drum": true,
-        "midi_program_name": "Drums",
-        "inst_class": "Drums"
-      }
-    ],
-    "post_instruments": [
-      {
-        "name": "piano",
-        "program": 1,
+        "name": "synth_pad",
+        "program": 88,
         "is_drum": false,
-        "midi_program_name": "Bright Acoustic Piano",
+        "midi_program_name": "Pad 1 (new age)",
+        "inst_class": "Synth Pad"
+      },
+      {
+        "name": "piano_1",
+        "program": 0,
+        "is_drum": false,
+        "midi_program_name": "Acoustic Grand Piano",
         "inst_class": "Piano"
-      },
-      {
-        "name": "chromatic_percussion_1",
-        "program": 10,
-        "is_drum": false,
-        "midi_program_name": "Music Box",
-        "inst_class": "Chromatic Percussion"
-      },
-      {
-        "name": "chromatic_percussion_3",
-        "program": 10,
-        "is_drum": false,
-        "midi_program_name": "Music Box",
-        "inst_class": "Chromatic Percussion"
-      },
-      {
-        "name": "strings__continued_1",
-        "program": 52,
-        "is_drum": false,
-        "midi_program_name": "Choir Aahs",
-        "inst_class": "Strings (continued)"
-      },
-      {
-        "name": "reed",
-        "program": 68,
-        "is_drum": false,
-        "midi_program_name": "Oboe",
-        "inst_class": "Reed"
-      },
-      {
-        "name": "bass",
-        "program": 33,
-        "is_drum": false,
-        "midi_program_name": "Electric Bass (finger)",
-        "inst_class": "Bass"
-      },
-      {
-        "name": "drums",
-        "program": 128,
-        "is_drum": true,
-        "midi_program_name": "Drums",
-        "inst_class": "Drums"
       },
       {
         "name": "guitar",
-        "program": 28,
+        "program": 27,
         "is_drum": false,
-        "midi_program_name": "Electric Guitar (muted)",
+        "midi_program_name": "Electric Guitar (clean)",
         "inst_class": "Guitar"
       },
       {
-        "name": "strings__continued_3",
+        "name": "strings__continued_1",
+        "program": 48,
+        "is_drum": false,
+        "midi_program_name": "String Ensemble 1",
+        "inst_class": "Strings (continued)"
+      },
+      {
+        "name": "piano_2",
+        "program": 4,
+        "is_drum": false,
+        "midi_program_name": "Electric Piano 1",
+        "inst_class": "Piano"
+      },
+      {
+        "name": "strings__continued_2",
         "program": 52,
         "is_drum": false,
         "midi_program_name": "Choir Aahs",
         "inst_class": "Strings (continued)"
       },
       {
-        "name": "chromatic_percussion_2",
-        "program": 9,
+        "name": "chromatic_percussion",
+        "program": 11,
         "is_drum": false,
-        "midi_program_name": "Glockenspiel",
+        "midi_program_name": "Vibraphone",
         "inst_class": "Chromatic Percussion"
+      },
+      {
+        "name": "strings__continued_3",
+        "program": 50,
+        "is_drum": false,
+        "midi_program_name": "Synth Strings 1",
+        "inst_class": "Strings (continued)"
       }
     ],
-    "attempt_count": 1,
-    "executed_ok": true
-  },
-  {
-    "track_id": "Track00010",
-    "role": "session_drummer",
-    "abstraction_level": "technical_parametric",
-    "hook": "spring reverb emulation on guitars, 700 ms decay",
-    "primary_intent": "effects",
-    "primary_tool": "apply_fx",
-    "target_track": null,
-    "motivation": "Production motivation: Spring reverb emulation on guitars, 700 ms decay; reverberance 65, wet_gain -6dB.",
-    "tool_calls": [
+    "post_instruments": [
       {
-        "name": "apply_fx",
-        "arguments": {
-          "track": "guitar_1",
-          "call": {
-            "effect": "sox_reverb",
-            "params": {
-              "reverberance": 65.0,
-              "wet_gain": -6.0,
-              "room_scale": 75.0,
-              "stereo_depth": 80.0
-            }
-          }
-        }
+        "name": "drums",
+        "program": 128,
+        "is_drum": true,
+        "midi_program_name": "Drums",
+        "inst_class": "Drums"
       },
-      {
-        "name": "apply_fx",
-        "arguments": {
-          "track": "drums",
-          "call": {
-            "effect": "sox_compand",
-            "params": {
-              "attack_time": 0.01,
-              "decay_time": 0.1,
-              "soft_knee_db": 6.0
-            }
-          }
-        }
-      },
-      {
-        "name": "apply_fx",
-        "arguments": {
-          "track": "drums",
-          "call": {
-            "effect": "sox_overdrive",
-            "params": {
-              "gain_db": 12.0,
-              "colour": 50.0
-            }
-          }
-        }
-      },
-      {
-        "name": "apply_fx",
-        "arguments": {
-          "track": "bass",
-          "call": {
-            "effect": "am_lowpass_filter",
-            "params": {
-              "cutoff_freq": 1500.0,
-              "rolloff": 12.0
-            }
-          }
-        }
-      },
-      {
-        "name": "apply_fx",
-        "arguments": {
-          "track": "synth_pad_2",
-          "call": {
-            "effect": "am_bandstop_filter",
-            "params": {
-              "center_freq": 250.0,
-              "bandwidth_fraction": 0.7,
-              "rolloff": 18.0
-            }
-          }
-        }
-      },
-      {
-        "name": "apply_fx",
-        "arguments": {
-          "track": "piano",
-          "call": {
-            "effect": "am_highpass_filter",
-            "params": {
-              "cutoff_freq": 100.0,
-              "rolloff": 12.0
-            }
-          }
-        }
-      },
-      {
-        "name": "apply_fx",
-        "arguments": {
-          "track": "mix",
-          "call": {
-            "effect": "am_loudness_normalization",
-            "params": {
-              "lufs": -23.0
-            }
-          }
-        }
-      },
-      {
-        "name": "apply_fx",
-        "arguments": {
-          "track": "guitar_1",
-          "call": {
-            "effect": "sox_echo",
-            "params": {
-              "gain_in": 0.7,
-              "gain_out": 0.6,
-              "delay_ms": 300.0,
-              "decay": 0.4
-            }
-          }
-        }
-      },
-      {
-        "name": "double_track",
-        "arguments": {
-          "track_name": "drums",
-          "offset_ms": 15.0,
-          "detune_cents": 10.0
-        }
-      },
-      {
-        "name": "change_instrument",
-        "arguments": {
-          "track": "bass",
-          "from_program": 33,
-          "to_program": 34
-        }
-      },
-      {
-        "name": "layer_instrument",
-        "arguments": {
-          "track": "piano",
-          "additional_program": 5,
-          "mix_ratio": 0.6
-        }
-      },
-      {
-        "name": "apply_fx",
-        "arguments": {
-          "track": "synth_pad_2",
-          "call": {
-            "effect": "sox_reverb",
-            "params": {
-              "reverberance": 50.0,
-              "wet_gain": -4.0,
-              "room_scale": 70.0,
-              "stereo_depth": 75.0
-            }
-          }
-        }
-      }
-    ],
-    "original_mp3": "audio/case_10_Track00010_original.mp3",
-    "modified_mp3": "audio/case_10_Track00010_modified.mp3",
-    "original_midi": "midi/case_10_Track00010_original.mid",
-    "modified_midi": "midi/case_10_Track00010_modified.mid",
-    "pre_instruments": [
       {
         "name": "bass",
         "program": 33,
@@ -2660,69 +2164,60 @@
         "inst_class": "Bass"
       },
       {
-        "name": "guitar_1",
-        "program": 25,
+        "name": "synth_pad",
+        "program": 88,
         "is_drum": false,
-        "midi_program_name": "Acoustic Guitar (steel)",
-        "inst_class": "Guitar"
-      },
-      {
-        "name": "synth_pad_2",
-        "program": 94,
-        "is_drum": false,
-        "midi_program_name": "Pad 7 (halo)",
+        "midi_program_name": "Pad 1 (new age)",
         "inst_class": "Synth Pad"
       },
       {
-        "name": "piano",
-        "program": 3,
+        "name": "piano_1",
+        "program": 0,
         "is_drum": false,
-        "midi_program_name": "Honky-tonk Piano",
+        "midi_program_name": "Acoustic Grand Piano",
         "inst_class": "Piano"
       },
       {
-        "name": "drums",
-        "program": 128,
-        "is_drum": true,
-        "midi_program_name": "Drums",
-        "inst_class": "Drums"
-      }
-    ],
-    "post_instruments": [
-      {
-        "name": "bass",
-        "program": 34,
+        "name": "guitar",
+        "program": 27,
         "is_drum": false,
-        "midi_program_name": "Electric Bass (finger)",
-        "inst_class": "Bass"
-      },
-      {
-        "name": "guitar_1",
-        "program": 25,
-        "is_drum": false,
-        "midi_program_name": "Acoustic Guitar (steel)",
+        "midi_program_name": "Electric Guitar (clean)",
         "inst_class": "Guitar"
       },
       {
-        "name": "synth_pad_2",
-        "program": 94,
+        "name": "strings__continued_1",
+        "program": 48,
         "is_drum": false,
-        "midi_program_name": "Pad 7 (halo)",
-        "inst_class": "Synth Pad"
+        "midi_program_name": "String Ensemble 1",
+        "inst_class": "Strings (continued)"
       },
       {
-        "name": "piano",
-        "program": 3,
+        "name": "piano_2",
+        "program": 4,
         "is_drum": false,
-        "midi_program_name": "Honky-tonk Piano",
+        "midi_program_name": "Electric Piano 1",
         "inst_class": "Piano"
       },
       {
-        "name": "drums",
-        "program": 128,
-        "is_drum": true,
-        "midi_program_name": "Drums",
-        "inst_class": "Drums"
+        "name": "strings__continued_2",
+        "program": 52,
+        "is_drum": false,
+        "midi_program_name": "Choir Aahs",
+        "inst_class": "Strings (continued)"
+      },
+      {
+        "name": "chromatic_percussion",
+        "program": 11,
+        "is_drum": false,
+        "midi_program_name": "Vibraphone",
+        "inst_class": "Chromatic Percussion"
+      },
+      {
+        "name": "strings__continued_3",
+        "program": 50,
+        "is_drum": false,
+        "midi_program_name": "Synth Strings 1",
+        "inst_class": "Strings (continued)"
       }
     ],
     "attempt_count": 1,

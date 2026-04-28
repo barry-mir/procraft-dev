@@ -1327,11 +1327,21 @@ def build_spec(
     # 5) Tool count.
     if tool_count is not None:
         tool_count_range = (tool_count, tool_count)
+    # ``technical_parametric`` hooks are hyper-specific (one parametric
+    # recipe per hook). At the (10, 15) default the motivation can only
+    # describe the recipe and the remaining 9-14 secondary calls drift
+    # off-topic. Clamp the count for this style so the motivation can
+    # plausibly describe every call. If a multi-target intent has more
+    # forced_calls than the clamped ceiling, the n_forced + 1 override
+    # below still kicks in.
+    if level.name == "technical_parametric":
+        tool_count_range = (4, 6)
     lo, hi = tool_count_range
     chosen_count = rng.randint(lo, hi)
-    # Forced calls (remix) take priority over the sampled count: the LLM
-    # must echo every one before any free apply_fx, and a 4-7 sample range
-    # can otherwise be smaller than the forced-call list.
+    # Forced calls (remix, multi-target arrangement_*) take priority over
+    # the sampled count: the LLM must echo every one before any free
+    # apply_fx, and the sample range can otherwise be smaller than the
+    # forced-call list.
     n_forced = len(intent.forced_calls)
     if n_forced > chosen_count:
         chosen_count = n_forced + 1   # +1 → at least one free apply_fx
@@ -1448,7 +1458,14 @@ def build_spec(
                "(even if the role's voice would not say 'program N' literally — "
                "paraphrase into what that instrument SOUNDS like)."
                if intent.target_program is not None else ".")
-            + "\n\n"
+            + "\n"
+              f"  (e) describes the WHOLE production direction across all "
+              f"the tool_calls you're about to emit — not just the primary "
+              f"move. Your motivation is the prose summary of every move "
+              f"on this turn. If you're going to add reverb on guitar AND "
+              f"sidechain the bass AND widen the strings, the motivation "
+              f"should signal all of those (or a single phrase that "
+              f"plausibly encompasses them).\n\n"
               f"Finally emit EXACTLY {chosen_count} tool_call block(s):\n"
         )
         if intent.forced_calls:
@@ -1459,12 +1476,15 @@ def build_spec(
                 f"tool_calls listed in the PRIMARY MOVE above (each one "
                 f"emitted verbatim, in any order).\n"
                 f"  - The remaining {n_extra} call(s) are free apply_fx "
-                f"calls. EACH ONE must be audibly substantial — pick "
-                f"medium or strong intensity from the EFFECT STRENGTH "
-                f"table; never 'light' / 'subtle'. Spread them across "
-                f"different tracks AND across different effect families "
-                f"(EQ, dynamics, modulation, distortion, reverb, delay) "
-                f"so the cumulative result is unmistakable.\n"
+                f"calls. EACH ONE must (a) elaborate or directly support "
+                f"the production direction stated in your motivation — "
+                f"do NOT introduce unrelated moves on tracks the "
+                f"motivation doesn't reference; (b) be audibly substantial "
+                f"— pick medium or strong intensity from the EFFECT "
+                f"STRENGTH table; never 'light' / 'subtle'. If the "
+                f"motivation supports it, spread the secondary fx across "
+                f"different tracks AND effect families (EQ, dynamics, "
+                f"modulation, distortion, reverb, delay).\n"
             )
         else:
             user += (
@@ -1472,16 +1492,18 @@ def build_spec(
                 f"({intent.primary_tool}) targeting the committed track "
                 f"where applicable.\n"
                 f"  - The remaining {max(0, chosen_count - 1)} call(s) are "
-                f"secondary. Bias HEAVILY toward apply_fx — the goal is a "
-                f"densely-treated mix where the primary move sits inside "
-                f"a clearly produced soundscape, not a clean one. Pick "
-                f"medium or strong intensity from the EFFECT STRENGTH "
-                f"table; never 'light' / 'subtle'. Spread the fx across "
-                f"different tracks AND across different effect families "
-                f"(EQ, dynamics, modulation, distortion, reverb, delay) "
-                f"so the cumulative result is unmistakable. A few "
-                f"cross-category instrument or arrangement moves on "
-                f"non-primary tracks are also welcome.\n"
+                f"secondary. EACH ONE must (a) elaborate or directly "
+                f"support the production direction stated in your "
+                f"motivation — do NOT introduce unrelated moves on tracks "
+                f"the motivation doesn't reference; (b) be audibly "
+                f"substantial — pick medium or strong intensity from the "
+                f"EFFECT STRENGTH table; never 'light' / 'subtle'. Bias "
+                f"toward apply_fx. If the motivation supports it (a broad "
+                f"aesthetic direction), spread fx across different tracks "
+                f"AND effect families. If the motivation is narrowly "
+                f"scoped (one parametric recipe), keep secondary calls "
+                f"tight around that move (carve EQ space for the focal "
+                f"effect, sidechain off it, mirror-treat a sister track).\n"
             )
         user += (
             f"  - Every call: <tool_call>{{\"name\": ..., \"arguments\": ...}}</tool_call>\n"

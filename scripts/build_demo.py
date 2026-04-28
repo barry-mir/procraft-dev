@@ -44,7 +44,12 @@ from procraft_data.sources.slakh import (
 )
 
 
-DEFAULT_TRACKS = [f"Track{i:05d}" for i in range(1, 11)]
+def _discover_slakh_tracks(slakh_root: Path) -> list[str]:
+    """List every TrackNNNNN directory under ``slakh_root``."""
+    if not slakh_root.is_dir():
+        return []
+    return sorted(p.name for p in slakh_root.iterdir()
+                  if p.is_dir() and p.name.startswith("Track"))
 
 
 # Thread-local FluidSynth
@@ -359,8 +364,13 @@ def main():
                     default="cpatonn/Qwen3-30B-A3B-Thinking-2507-AWQ-4bit")
     ap.add_argument("--duration", type=float, default=paths.CLIP_SECONDS)
     ap.add_argument("--workers", type=int, default=4)
-    ap.add_argument("--tracks", nargs="+", default=DEFAULT_TRACKS)
-    ap.add_argument("--seed", type=int, default=7)
+    ap.add_argument("--tracks", nargs="+", default=None,
+                    help="Track IDs to use. Default: random sample of "
+                         "len(PRIMARY_INTENTS) tracks from --slakh-root, "
+                         "one per primary intent.")
+    ap.add_argument("--seed", type=int, default=None,
+                    help="RNG seed for track sampling + intent ordering. "
+                         "Default: time-based so each run differs.")
     args = ap.parse_args()
 
     out_dir = Path(args.out_dir)
@@ -380,19 +390,32 @@ def main():
     client.wait_ready(max_wait_sec=10)
 
     rng = random.Random(args.seed)
+
+    # The demo shows one case per primary intent. If the caller didn't
+    # pin --tracks, sample len(PRIMARY_INTENTS) distinct tracks at
+    # random from --slakh-root so each demo run has a fresh selection.
+    if args.tracks is None:
+        available = _discover_slakh_tracks(slakh_root)
+        if len(available) < len(PRIMARY_INTENTS):
+            raise SystemExit(
+                f"Only {len(available)} tracks available under "
+                f"{slakh_root}, need {len(PRIMARY_INTENTS)}. Pass "
+                f"--tracks explicitly or extract more BabySlakh tracks."
+            )
+        args.tracks = rng.sample(available, len(PRIMARY_INTENTS))
+
+    # Pin one slot per primary intent — every demo run guarantees full
+    # intent coverage. The intent → slot mapping is shuffled so visual
+    # order in the page doesn't correlate with PRIMARY_INTENTS order.
+    intent_seq = list(PRIMARY_INTENTS)
+    rng.shuffle(intent_seq)
+    forced_intents: list[str | None] = list(intent_seq[: len(args.tracks)])
+    if len(args.tracks) > len(intent_seq):
+        # User passed more --tracks than there are intents; remaining
+        # slots fall back to uniform random sampling.
+        forced_intents.extend([None] * (len(args.tracks) - len(intent_seq)))
+
     seeds = [rng.randint(0, 2**31 - 1) for _ in args.tracks]
-    # Coverage bias: pin three slots in the demo grid — one
-    # ``extract_track`` (new motivation-only intent), one ``remix`` (new
-    # forced-call composite), and one ``effects`` (showcase the bumped
-    # 10-15 fx-per-entry behavior). The remaining slots stay uniform
-    # random over PRIMARY_INTENTS via _build_one's default branch.
-    forced_intents: list[str | None] = [None] * len(args.tracks)
-    pinned = ["extract_track", "remix", "effects"]
-    if len(args.tracks) >= len(pinned):
-        slots = list(range(len(args.tracks)))
-        rng.shuffle(slots)
-        for slot, intent in zip(slots[:len(pinned)], pinned):
-            forced_intents[slot] = intent
 
     print(f"Generating {len(args.tracks)} demo cases…")
     t0 = time.time()
