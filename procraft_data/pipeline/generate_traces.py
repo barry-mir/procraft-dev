@@ -93,10 +93,20 @@ class DatasetEntry:
     mix_rms_modified: float
     mix_rms_delta: float
     usage: dict
-    latency_sec: float
+    latency_sec: float            # LLM-only call latency (sum across retries)
     raw_response: str
     original_wav: str = ""
     modified_wav: str = ""
+    # Per-stage wall-clock breakdown for throughput analysis. ``llm_sec``
+    # is the cumulative LLM time (== latency_sec, kept for convenience).
+    # ``render_sec`` is FluidSynth render of all stems before the LLM
+    # call. ``executor_sec`` is the time spent applying tool_calls
+    # (mostly multiafx + any add_track re-render). ``total_sec`` is the
+    # entry's wall-clock from generate_one start to write end.
+    llm_sec: float = 0.0
+    render_sec: float = 0.0
+    executor_sec: float = 0.0
+    total_sec: float = 0.0
     # MIDI sidecars written next to the WAVs. ``original.mid`` describes
     # ``state.tracks`` BEFORE any tool_call executes (matches original_audio).
     # ``modified.mid`` describes ``state.tracks`` AFTER all tool_calls execute
@@ -386,6 +396,15 @@ def _result_is_valid(motivation: str, tool_calls: list[dict],
         for fc in spec.forced_calls:
             if not _matches_forced_call(fc, tool_calls):
                 return False, f"forced call missing: {fc['name']} {fc['arguments']}"
+        # ``remix``-specific content-binding (Option C). The motivation
+        # must reference at least one dropped track AND at least one
+        # added track — by identifier or natural-name substring,
+        # case-insensitive. This catches generic "playlist-ready" prose
+        # that doesn't actually describe the variant.
+        if spec.primary_intent == "remix":
+            ok, why = _remix_motivation_grounded(motivation, spec)
+            if not ok:
+                return False, why
         return True, ""
     if not any(tc.get("name") == spec.primary_tool for tc in tool_calls):
         return False, f"primary tool {spec.primary_tool!r} missing from tool_calls"
@@ -410,6 +429,7 @@ def _finalize_extract_track(
     pre_midi: "any", input_metadata: str, attempt: int,
     retry_reasons: list[str], entry_idx: int, out_dir: Path,
     sample_rate: int,
+    render_sec: float = 0.0, total_start: float = 0.0,
 ) -> "DatasetEntry":
     """Build the DatasetEntry for an ``extract_track`` run.
 
@@ -485,9 +505,52 @@ def _finalize_extract_track(
         modified_wav=mod_path.name,
         original_midi=orig_midi_path.name,
         modified_midi=mod_midi_path.name,
+        llm_sec=tr.latency_sec,
+        render_sec=render_sec,
+        executor_sec=0.0,    # extract_track has no executor stage
+        total_sec=(__import__('time').perf_counter() - total_start) if total_start else 0.0,
     )
     (out_dir / f"{stem}.json").write_text(json.dumps(entry.to_json(), indent=2))
     return entry
+
+
+def _remix_motivation_grounded(motivation: str, spec: PromptSpec) -> tuple[bool, str]:
+    """Verify the remix motivation references at least one dropped AND at
+    least one added track — by identifier or natural-name substring,
+    case-insensitive. The prompt asks for this explicitly; the validator
+    here is the deterministic safety net.
+    """
+    text = motivation.lower()
+
+    def _name_variants(track_id: str) -> list[str]:
+        out = [track_id.lower()]
+        natural = (spec.natural_map or {}).get(track_id, "").lower()
+        if natural:
+            # Strip leading "the " and trailing parentheticals so the
+            # surface form is the noun phrase we expect to see in prose.
+            stripped = natural
+            if stripped.startswith("the "):
+                stripped = stripped[4:]
+            out.append(stripped)
+        return out
+
+    dropped_ids = [c["arguments"]["track"] for c in spec.forced_calls
+                   if c["name"] == "remove_track"]
+    added_ids = [c["arguments"]["track_name"] for c in spec.forced_calls
+                 if c["name"] == "add_track"]
+
+    def _any_in_text(ids: list[str]) -> bool:
+        for tid in ids:
+            for variant in _name_variants(tid):
+                if variant and variant in text:
+                    return True
+        return False
+
+    if dropped_ids and not _any_in_text(dropped_ids):
+        return False, f"motivation doesn't reference any dropped track ({dropped_ids})"
+    if added_ids and not _any_in_text(added_ids):
+        return False, f"motivation doesn't reference any added track ({added_ids})"
+    return True, ""
 
 
 def _matches_forced_call(forced: dict, tool_calls: list[dict]) -> bool:
@@ -544,6 +607,10 @@ def generate_one(
     ``executed_ok = False`` and ``retry_reasons`` populated so a downstream
     quality filter can drop it.
     """
+    import time as _time
+    _t_total_start = _time.perf_counter()
+    _render_sec = 0.0
+    _executor_sec = 0.0
     import pretty_midi
     longest = max(pretty_midi.PrettyMIDI(str(track.midi_path(sid))).get_end_time()
                   for sid in track.stems)
@@ -609,8 +676,10 @@ def generate_one(
         track, sample_rate, start, duration_sec,
         withhold=withhold_for_add,
     )
+    _t = _time.perf_counter()
     for ts in state.tracks.values():
         ts.audio = renderer.render_track(ts, duration_sec)
+    _render_sec += _time.perf_counter() - _t
     # Snapshot the pre-execution mixdown — this IS the original audio we
     # store. For arrangement_add the state has the target track withheld
     # (pending_tracks, not state.tracks), so this snapshot is the
@@ -775,11 +844,13 @@ def generate_one(
             pre_midi=pre_midi, input_metadata=input_metadata,
             attempt=attempt, retry_reasons=retry_reasons,
             entry_idx=entry_idx, out_dir=out_dir, sample_rate=sample_rate,
+            render_sec=_render_sec, total_start=_t_total_start,
         )
 
     errors: list[str] = []
     executed = 0
     tool_effects: list[dict] = []
+    _exec_start = _time.perf_counter()
     for tc in tr.tool_calls:
         name = tc.get("name")
         args = tc.get("arguments", {}) or {}
@@ -824,6 +895,7 @@ def generate_one(
                 "track_rms_before": track_before, "track_rms_after": track_before,
                 "track_rms_delta": 0.0,
             })
+    _executor_sec += _time.perf_counter() - _exec_start
     executed_ok = executed > 0 and executed == len(tr.tool_calls)
 
     # Original = pre-execution snapshot (see comment above). Modified =
@@ -934,6 +1006,10 @@ def generate_one(
         modified_wav=mod_path.name,
         original_midi=orig_midi_path.name,
         modified_midi=mod_midi_path.name,
+        llm_sec=tr.latency_sec,
+        render_sec=_render_sec,
+        executor_sec=_executor_sec,
+        total_sec=_time.perf_counter() - _t_total_start,
     )
     (out_dir / f"{stem}.json").write_text(json.dumps(entry.to_json(), indent=2))
     return entry

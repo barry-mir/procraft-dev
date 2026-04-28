@@ -439,6 +439,37 @@ def main():
 
     print(f"\nGeneration wall: {time.time()-t0:.1f}s")
 
+    # Per-stage timing breakdown (for throughput analysis).
+    if results:
+        ents = [r["entry"] for r in results.values()]
+        n = len(ents)
+        sum_total = sum(e.total_sec for e in ents)
+        sum_llm = sum(e.llm_sec for e in ents)
+        sum_render = sum(e.render_sec for e in ents)
+        sum_exec = sum(e.executor_sec for e in ents)
+        print(f"\nPer-entry timing breakdown (mean across {n} entries):")
+        print(f"  total    {sum_total / n:6.2f} s  (sum {sum_total:6.1f}s)")
+        print(f"  llm      {sum_llm / n:6.2f} s  (sum {sum_llm:6.1f}s)  "
+              f"{100 * sum_llm / sum_total:5.1f}% of per-entry total")
+        print(f"  render   {sum_render / n:6.2f} s  (sum {sum_render:6.1f}s)  "
+              f"{100 * sum_render / sum_total:5.1f}%")
+        print(f"  executor {sum_exec / n:6.2f} s  (sum {sum_exec:6.1f}s)  "
+              f"{100 * sum_exec / sum_total:5.1f}%")
+        wall = time.time() - t0
+        print(f"  parallel speedup ({args.workers} workers): "
+              f"{sum_total / wall:.2f}x  "
+              f"(sum-of-entry-totals / wall = {sum_total:.1f} / {wall:.1f})")
+        # Per-case detail.
+        print()
+        print("Per-case (sorted by total):")
+        for r in sorted(results.values(), key=lambda r: -r["entry"].total_sec):
+            e = r["entry"]
+            print(f"  {r['track_id']} [{e.primary_intent:24s}] "
+                  f"total {e.total_sec:5.1f}s = "
+                  f"llm {e.llm_sec:5.1f} + render {e.render_sec:5.1f} + "
+                  f"exec {e.executor_sec:5.1f}  "
+                  f"(n_calls={len(e.tool_calls)}, attempts={e.attempt_count})")
+
     # Transcode WAVs → MP3 and collect cases in order.
     cases: list[dict] = []
     for i in range(len(args.tracks)):

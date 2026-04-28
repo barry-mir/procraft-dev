@@ -147,6 +147,12 @@ attempt — and triggers a retry — when any of these are true:
    resolved; the densely-treated mix we promise downstream needs the
    full N. ``motivation_only`` intents (``extract_track``) are exempt
    — their `chosen_count` is 0.
+5. **Remix content-binding** (``primary_intent == "remix"``).
+   `_remix_motivation_grounded` checks the motivation references at
+   least one dropped track AND at least one added track, by
+   identifier or natural-name substring (case-insensitive, leading
+   "the " stripped). Catches generic "playlist-ready" prose that
+   doesn't describe the variant's instrumentation change.
 
 `attempt_count` and `retry_reasons` are recorded on every DatasetEntry.
 If all retries are exhausted, the last response is saved with
@@ -326,18 +332,46 @@ the resolved tool_calls are stashed on `IntentCommitment.forced_calls`.
 only, and the removed set surfaces in the metadata's `available_to_add`
 section.
 
-The system prompt's PRIMARY MOVE block lists every forced call
-verbatim; the LLM is told to emit each verbatim plus enough free
-`apply_fx` calls to reach `chosen_count = max(sampled_count, n_forced + 1)`.
-`_result_is_valid(spec)` — used in the retry loop — accepts the response
-only when every forced call is matched by a tool_call (matching policy in
-`_matches_forced_call`: name + key arguments). Post-execution, an
-additional invariant check ensures no kept-set original program survives
-in `post_instruments`; violations append to `executed_errors` and flip
-`executed_ok=False` (no retry — the prompt's structure guarantees
-satisfaction in the happy path).
+**Dedicated user prompt (`_build_remix_user_prompt`).** Remix is in the
+``DEDICATED_PROMPT_INTENTS`` set, so its user prompt body bypasses the
+role × abstraction × hook scaffolding. The role-voice machinery
+routinely produced motivations that ignored the actual drop / swap /
+add operations and drifted into generic "playlist-ready" prose
+contradicting the moves. The dedicated prompt instead names every
+move with both the internal identifier and the natural-name (so the
+motivation can paraphrase from a hint), lists the forced tool_calls
+verbatim for copy-paste, and requires the motivation to (a)
+characterise the variant in one short phrase and (b) name at least
+one dropped track AND one added track using the natural names. The
+role / abstraction_level / hook fields are still sampled and recorded
+on the spec for diversity bookkeeping but don't appear in the prompt
+body. The §3.3 retry validator's content-binding check
+(`_remix_motivation_grounded`) is the deterministic safety net.
 
-### 3.13 Shared peak-normalize at output
+Post-execution, an invariant check ensures no kept-set original
+program survives in `post_instruments`; violations append to
+`executed_errors` and flip `executed_ok=False` (no retry — the
+prompt's structure guarantees satisfaction in the happy path).
+
+### 3.13 Per-stage wall-clock instrumentation
+Every `DatasetEntry` records a four-field timing breakdown for
+throughput analysis:
+
+- `llm_sec` — cumulative LLM call latency (sum across retries).
+- `render_sec` — FluidSynth render of all stems before the LLM call.
+- `executor_sec` — time spent applying tool_calls (multiafx + any
+  add_track re-render).
+- `total_sec` — entry's wall-clock from `generate_one` start to write
+  end.
+
+`scripts/build_demo.py` aggregates these across the run and prints a
+per-stage summary plus a per-case sorted breakdown so the slowest
+case is visible. Empirically, on the 3090 + Qwen3-30B-A3B-Thinking
+AWQ4 setup, LLM dominates at ~73% of per-entry total; render +
+executor combined are < 7%. The wall/sum-of-totals ratio reports the
+parallel speedup observed at the current `--workers` setting.
+
+### 3.14 Shared peak-normalize at output
 `_shared_peak_normalize(original, modified, target=0.95)` computes one
 scale factor from `max(|original|, |modified|)`; applies to both.
 Preserves the relative loudness delta between the pair while preventing

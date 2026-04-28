@@ -35,10 +35,18 @@ def test_build_spec_samples_role_level_hook():
 
 
 def test_build_spec_respects_pins():
+    # Pin a non-dedicated-prompt intent — extract_track and remix have
+    # bespoke prompts that intentionally omit the role × abstraction ×
+    # hook scaffolding (the role/abstraction fields are still recorded
+    # on the spec for diversity bookkeeping but don't appear in the user
+    # prompt body).
+    from procraft_data.pipeline.trace_prompts import sample_primary_intent
+    intent = sample_primary_intent(EXAMPLE_META, forced_intent="effects", seed=0)
     spec = build_spec(
         EXAMPLE_META,
         role="non_musician_client",
         abstraction_level="scene_metaphor",
+        intent=intent,
         seed=42,
     )
     assert spec.role == "non_musician_client"

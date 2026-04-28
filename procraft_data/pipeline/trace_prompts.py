@@ -502,6 +502,15 @@ _INTENT_TOOL: dict[str, str] = {
 # generates the motivation sentence and gets a tool-free system prompt.
 MOTIVATION_ONLY_INTENTS: frozenset[str] = frozenset({"extract_track"})
 
+# Intents whose motivation prompt bypasses the role × abstraction × hook
+# scaffold and instead names the actual moves explicitly. The role /
+# abstraction_level / hook fields are still sampled and recorded on the
+# spec for diversity bookkeeping but don't shape the prompt body.
+# ``remix`` lives here because the role-voice machinery routinely produced
+# motivations that ignored the actual drop / swap / add operations and
+# drifted into generic "playlist-ready" prose contradicting the moves.
+DEDICATED_PROMPT_INTENTS: frozenset[str] = frozenset({"remix"})
+
 
 # ---------------------------------------------------------------------------
 # PromptSpec
@@ -527,6 +536,7 @@ class PromptSpec:
     plan: dict = field(default_factory=dict)                    # remix bookkeeping
     motivation_only: bool = False    # True for extract_track — no <tools> block
     chosen_count: int = 0            # the EXACTLY-N value embedded in the user prompt
+    natural_map: dict = field(default_factory=dict)  # identifier → natural-name (validator)
 
     def as_messages(self) -> list[dict]:
         return [
@@ -891,6 +901,100 @@ def thaw_plan(plan) -> dict:
     if isinstance(plan, dict):
         return dict(plan)
     return {k: v for k, v in plan}
+
+
+def _build_remix_user_prompt(
+    intent: IntentCommitment,
+    natural_map: dict[str, str],
+    chosen_count: int,
+) -> str:
+    """Dedicated user prompt for the ``remix`` intent.
+
+    Bypasses the role × abstraction × hook scaffolding entirely. The
+    role-voice machinery routinely produced motivations that ignored
+    the actual drop / swap / add operations and drifted into generic
+    "playlist-ready" prose contradicting the moves. Here we name the
+    moves directly, list the forced tool_calls verbatim for copy-paste,
+    and require the motivation to be grounded in those moves (validator
+    enforces).
+    """
+    import json as _json
+    import pretty_midi as _pm
+
+    drop_lines: list[str] = []
+    swap_lines: list[str] = []
+    add_lines: list[str] = []
+    for c in intent.forced_calls:
+        a = c["arguments"]
+        if c["name"] == "remove_track":
+            t = a["track"]
+            nat = natural_map.get(t, t)
+            drop_lines.append(f"  - DROP '{t}' ({nat})")
+        elif c["name"] == "change_instrument":
+            t = a["track"]
+            nat = natural_map.get(t, t)
+            try:
+                new_name = _pm.program_to_instrument_name(int(a["to_program"]))
+            except Exception:
+                new_name = f"GM {a['to_program']}"
+            swap_lines.append(f"  - SWAP '{t}' ({nat}) → {new_name}")
+        elif c["name"] == "add_track":
+            t = a["track_name"]
+            nat = natural_map.get(t, t)
+            add_lines.append(f"  - ADD '{t}' ({nat})")
+
+    drops = "\n".join(drop_lines) if drop_lines else "  (none)"
+    swaps = "\n".join(swap_lines) if swap_lines else "  (none)"
+    adds = "\n".join(add_lines) if add_lines else "  (none)"
+    forced_block = "\n".join(
+        f"  <tool_call>{_json.dumps(c, separators=(',', ':'))}</tool_call>"
+        for c in intent.forced_calls
+    )
+    n_forced = len(intent.forced_calls)
+    n_extra = max(0, chosen_count - n_forced)
+
+    return (
+        "REMIX TASK\n"
+        "\n"
+        "The pipeline has pre-decided this remix's structural moves. "
+        "Each pre-decided move below MUST be emitted verbatim as a "
+        "tool_call.\n"
+        "\n"
+        f"DROPS (these tracks leave the mix):\n{drops}\n"
+        "\n"
+        f"SWAPS (these tracks stay but switch instrument):\n{swaps}\n"
+        "\n"
+        f"ADDS (these withheld tracks join the mix):\n{adds}\n"
+        "\n"
+        "Output structure (in order):\n"
+        "1. ONE line beginning with 'Production motivation: ' followed by "
+        "a 1-2 sentence motivation that:\n"
+        "   - characterises the variant in one short phrase (e.g. "
+        "'stripped-down acoustic version', 'phone-speaker pop edit', "
+        "'late-night lo-fi rework', 'stadium-ready reimagining');\n"
+        "   - NAMES at least one dropped track AND at least one added "
+        "track using the natural descriptions above (e.g. 'the "
+        "distortion guitar', 'the drums'). The motivation MUST be "
+        "grounded in the actual moves above. Do NOT write generic vibe "
+        "prose that doesn't name any of the moves.\n"
+        f"2. EXACTLY {chosen_count} <tool_call> blocks. The first "
+        f"{n_forced} blocks are the forced moves listed below — copy "
+        f"each one verbatim (in any order). The remaining {n_extra} "
+        "blocks are free apply_fx calls that elaborate the variant — "
+        "pick medium or strong intensity from the EFFECT STRENGTH "
+        "table; never light/subtle. Spread fx across multiple tracks "
+        "and effect families (EQ, dynamics, modulation, distortion, "
+        "reverb, delay) so the variant sounds clearly produced.\n"
+        "\n"
+        "Forced calls (copy verbatim):\n"
+        f"{forced_block}\n"
+        "\n"
+        "In tool_call arguments use the EXACT internal identifier "
+        "(e.g. `guitar_1`); in the motivation sentence use the natural "
+        "description in parentheses next to each move above. Do NOT "
+        "write a <think>...</think> block. Output the motivation line, "
+        f"then EXACTLY {chosen_count} <tool_call> blocks, then stop."
+    )
 
 
 def make_remix_intent(plan) -> IntentCommitment:
@@ -1410,6 +1514,12 @@ def build_spec(
             f"<think>...</think> block. After the 'Production motivation:' "
             f"line, stop."
         )
+    elif intent.intent in DEDICATED_PROMPT_INTENTS:
+        # ``remix`` bypasses role × abstraction × hook for the prompt
+        # body — see _build_remix_user_prompt's docstring. role /
+        # abstraction_level / hook fields are still sampled and recorded
+        # on the spec for diversity bookkeeping.
+        user = _build_remix_user_prompt(intent, natural_map, chosen_count)
     else:
         user = (
             user_head
@@ -1512,6 +1622,7 @@ def build_spec(
         plan={k: v for k, v in intent.plan},
         motivation_only=motivation_only,
         chosen_count=chosen_count if not motivation_only else 0,
+        natural_map=dict(natural_map),
     )
 
 
