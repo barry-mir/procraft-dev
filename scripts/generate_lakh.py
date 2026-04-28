@@ -49,7 +49,7 @@ _TLS = threading.local()
 def _get_renderer(sf_path: Path) -> FluidSynthRenderer:
     r = getattr(_TLS, "renderer", None)
     if r is None:
-        r = FluidSynthRenderer(sf_path=sf_path)
+        r = FluidSynthRenderer(soundfont_path=sf_path)
         _TLS.renderer = r
     return r
 
@@ -104,6 +104,29 @@ def _build_one(midi_path_str: str, seed: int, client: VLLMClient,
             withhold_for_add=None, max_retries=max_retries,
             stem_override="entry",
         )
+        # generate_one writes ``entry.json`` + ``entry_original.wav`` /
+        # ``entry_modified.wav`` / ``entry_original.mid`` /
+        # ``entry_modified.mid``. Rename to the canonical flat layout
+        # we promise on disk: original.wav, modified.wav, etc.
+        for src_name, dst_name in (
+            ("entry_original.wav", "original.wav"),
+            ("entry_modified.wav", "modified.wav"),
+            ("entry_original.mid", "original.mid"),
+            ("entry_modified.mid", "modified.mid"),
+        ):
+            src = out_dir / src_name
+            if src.exists():
+                src.replace(out_dir / dst_name)
+        # Patch the filename fields on the persisted entry.json so the
+        # paths there match what's actually on disk.
+        entry_json_path = out_dir / "entry.json"
+        if entry_json_path.exists():
+            blob = json.loads(entry_json_path.read_text())
+            blob["original_wav"] = "original.wav"
+            blob["modified_wav"] = "modified.wav"
+            blob["original_midi"] = "original.mid"
+            blob["modified_midi"] = "modified.mid"
+            entry_json_path.write_text(json.dumps(blob, indent=2))
         return {
             "track_id": md5,
             "status": "ok" if entry.executed_ok else "ok_with_errors",
