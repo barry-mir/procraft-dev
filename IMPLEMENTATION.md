@@ -72,18 +72,27 @@ continuous batching. Wall time for 10 entries ≈ 130–160 s.
   ``arrangement_double`` (`double_track`), ``performance_timing``
   (`humanize_timing`), ``performance_articulation``
   (`change_articulation`).
-- **tool_count_range** default `(10, 15)`, clamped to `(4, 6)` when the
-  abstraction level is ``technical_parametric``. Hyper-specific
-  parametric hooks anchor on one recipe; at the default range the
-  motivation could only describe the recipe and the remaining 9-14
-  secondary calls drifted off-topic. Multi-target intents whose
-  ``forced_calls`` list exceeds the clamped ceiling override the count
-  via ``chosen_count = max(sampled_count, n_forced + 1)``.
+- **tool_count_range** default `(10, 15)` for every abstraction level.
+  Multi-target intents whose ``forced_calls`` list exceeds the sampled
+  ceiling override the count via
+  ``chosen_count = max(sampled_count, n_forced + 1)``. Earlier
+  iterations clamped ``technical_parametric`` to `(4, 6)` to keep
+  motivation/fx aligned, but the alignment language (below) makes that
+  unnecessary — when the hook is a narrow parametric recipe, the model
+  is told to promote it into a broader direction the 9-14 secondary
+  fx fill out, not to restate the recipe.
+- **motivation expansion.** The motivation prompt's clause (e) names
+  the chosen count explicitly: "describes the WHOLE production
+  direction across the N tool_calls you're about to emit". Narrow
+  parametric hooks must be promoted to a broader direction the
+  secondary calls elaborate; the motivation can name moves
+  individually OR roll them up under a single phrase ("lush stadium
+  space, tight low end, wide top").
 - **secondary-call alignment.** Each secondary call must elaborate or
   directly support the production direction stated in the motivation —
   the prompt forbids unrelated moves on tracks the motivation doesn't
-  reference. For broad aesthetic motivations the prompt asks for spread
-  across tracks AND effect families (EQ, dynamics, modulation,
+  reference. For broad aesthetic motivations the prompt asks for
+  spread across tracks AND effect families (EQ, dynamics, modulation,
   distortion, reverb, delay) at medium / strong intensity (never light
   / subtle). For narrow parametric motivations the prompt asks
   secondary calls to tighten around the focal move (carve EQ space,
@@ -277,18 +286,19 @@ program if it wants set-level mixture labels.
 This intent does not call any tool. `sample_primary_intent` picks one
 track (any class — drums OK). The LLM is given a stripped-down system
 prompt (`EXTRACT_TRACK_PREAMBLE` — no `<tools>` block, no `<think>`
-requirement) and a focused user prompt that bypasses the role × abstraction
-× hook system entirely. The user prompt asks for a single imperative
-sentence (15-25 words) with verb variation (extract / pull out / solo /
-isolate / separate / lift / take out / single out), a paraphrased
-natural name (e.g. `piano` → `keyboard track`), and one short clause
-explaining why. role / abstraction_level / hook fields are still sampled
-and recorded on the spec for diversity bookkeeping but don't shape this
-text. `generate_one` short-circuits at `_finalize_extract_track`:
-`original_audio` is the full mix; `modified_audio` is the target
-track's per-stem audio rendered alone; `pre_instruments` is the full
-mixture; `post_instruments` is `[the one extracted track]`;
-`tool_calls = []`.
+requirement) and a tiny instruction-style user prompt: produce a 5-to-
+10-word imperative ("Extract the piano." / "Solo the bass track." /
+"Pull the drums out of the mix.") with verb variation (extract / pull
+out / solo / isolate / separate / lift / take out / single out) and a
+paraphrased natural name (e.g. `piano` → `keyboard track`). The prompt
+explicitly forbids "why" clauses, ``<think>`` blocks, or any text
+beyond the imperative. role / abstraction_level / hook fields are
+still sampled and recorded on the spec for diversity bookkeeping but
+don't shape this text. `generate_one` short-circuits at
+`_finalize_extract_track`: `original_audio` is the full mix;
+`modified_audio` is the target track's per-stem audio rendered alone;
+`pre_instruments` is the full mixture; `post_instruments` is
+`[the one extracted track]`; `tool_calls = []`.
 
 ### 3.12 remix — kept-set drop/swap + add-back from removed-set
 `_plan_remix` runs at sample time on the FULL mix metadata:

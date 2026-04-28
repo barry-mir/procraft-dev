@@ -1313,15 +1313,6 @@ def build_spec(
     # 5) Tool count.
     if tool_count is not None:
         tool_count_range = (tool_count, tool_count)
-    # ``technical_parametric`` hooks are hyper-specific (one parametric
-    # recipe per hook). At the (10, 15) default the motivation can only
-    # describe the recipe and the remaining 9-14 secondary calls drift
-    # off-topic. Clamp the count for this style so the motivation can
-    # plausibly describe every call. If a multi-target intent has more
-    # forced_calls than the clamped ceiling, the n_forced + 1 override
-    # below still kicks in.
-    if level.name == "technical_parametric":
-        tool_count_range = (4, 6)
     lo, hi = tool_count_range
     chosen_count = rng.randint(lo, hi)
     # Forced calls (remix, multi-target arrangement_*) take priority over
@@ -1393,37 +1384,31 @@ def build_spec(
     )
 
     if motivation_only:
-        # ``extract_track`` uses a dedicated, much simpler prompt: a
-        # single imperative sentence ("Extract the piano …") with verb
-        # variation and natural-name paraphrase. role / abstraction /
-        # hook are NOT used in the prompt body — they're still recorded
-        # on the spec for diversity bookkeeping but don't shape this
-        # text. The motivation here functions like a system instruction
-        # ("extract X"), not a producer's diagnostic note.
+        # ``extract_track`` uses a tiny, instruction-style prompt: a
+        # short imperative ("Extract the piano.") with verb variation
+        # and a paraphrased natural name. No "why" clause, no role /
+        # abstraction / hook scaffolding — those are still recorded on
+        # the spec for diversity bookkeeping but don't shape this text.
         target_id = intent.target_track or ""
         natural = natural_map.get(target_id, target_id)
         user = (
-            f"{natural_block}"
             f"EXTRACT MOVE: take the track '{target_id}' "
-            f"({natural}) out of the mixture and present it in isolation.\n\n"
-            f"Write exactly ONE line beginning with 'Production motivation: ' "
-            f"followed by a short imperative sentence (15-25 words) telling "
-            f"someone to extract this track. Vary the verb naturally — "
-            f"pick from {{extract, pull out, solo, isolate, separate, lift, "
-            f"take out, single out}}. Paraphrase the track name when it "
-            f"reads naturally ('piano' → 'keyboard track'; 'electric "
-            f"guitar' → 'rhythm guitar part'; the natural phrase above "
-            f"is a hint, not a script). Add ONE short clause explaining "
-            f"WHY (e.g. 'so we can hear the comping line', 'to study the "
-            f"groove', 'before mixing the rest').\n\n"
-            f"Examples (illustrative only — do NOT copy verbatim):\n"
-            f"  - \"Extract the piano so we can hear the comping line under all the noise.\"\n"
-            f"  - \"Solo the bass to study how the player moves between the changes.\"\n"
-            f"  - \"Pull the drums out — I want to focus on the kick pattern before EQing the rest.\"\n\n"
-            f"Do NOT emit any <tool_call> blocks, do NOT write a "
-            f"<think>...</think> block, and do NOT add any text after the "
-            f"motivation line. Output ONLY the single 'Production "
-            f"motivation: ...' line, then stop."
+            f"({natural}) out of the mixture.\n\n"
+            f"Output ONE line: 'Production motivation: ' followed by a "
+            f"5-to-10-word imperative sentence telling someone to extract "
+            f"this track. Vary the verb naturally — pick from {{extract, "
+            f"pull out, solo, isolate, separate, lift, take out, single "
+            f"out}}. Paraphrase the track name when it reads naturally "
+            f"('piano' → 'keyboard track'; 'electric guitar' → 'rhythm "
+            f"guitar part'). DO NOT add an explanation, a 'so we can…' "
+            f"clause, or any other text. Just the imperative.\n\n"
+            f"Examples (do NOT copy verbatim):\n"
+            f"  - \"Extract the piano.\"\n"
+            f"  - \"Solo the bass track.\"\n"
+            f"  - \"Pull the drums out of the mix.\"\n\n"
+            f"Do NOT emit any <tool_call> blocks. Do NOT write a "
+            f"<think>...</think> block. After the 'Production motivation:' "
+            f"line, stop."
         )
     else:
         user = (
@@ -1445,13 +1430,18 @@ def build_spec(
                "paraphrase into what that instrument SOUNDS like)."
                if intent.target_program is not None else ".")
             + "\n"
-              f"  (e) describes the WHOLE production direction across all "
-              f"the tool_calls you're about to emit — not just the primary "
-              f"move. Your motivation is the prose summary of every move "
-              f"on this turn. If you're going to add reverb on guitar AND "
-              f"sidechain the bass AND widen the strings, the motivation "
-              f"should signal all of those (or a single phrase that "
-              f"plausibly encompasses them).\n\n"
+              f"  (e) describes the WHOLE production direction across "
+              f"the {chosen_count} tool_calls you're about to emit — "
+              f"not just the primary move. Your motivation is the prose "
+              f"summary of every move on this turn. If you're going to "
+              f"add reverb on guitar AND sidechain the bass AND widen "
+              f"the strings, the motivation must signal all of those "
+              f"(either by name or via a single phrase that plausibly "
+              f"encompasses them — e.g. 'lush stadium space, tight low "
+              f"end, wide top'). When the hook gives you a narrow recipe "
+              f"(e.g. a parametric reverb setting), promote it into a "
+              f"broader direction your secondary calls will fill out — "
+              f"don't just restate the recipe.\n\n"
               f"Finally emit EXACTLY {chosen_count} tool_call block(s):\n"
         )
         if intent.forced_calls:
