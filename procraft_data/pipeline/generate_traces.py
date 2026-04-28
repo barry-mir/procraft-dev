@@ -531,6 +531,11 @@ def generate_one(
         rng = _rnd.Random(hash((track.track_id, entry_idx)))
         name_by_sid = _dedup_names(list(track.stems.values()))
 
+        # How many tracks to withhold — set by sample_primary_intent at
+        # spec-build time, defaults to 1 if absent (back-compat).
+        plan_d = dict(spec.plan) if spec.plan else {}
+        n_targets = int(plan_d.get("n_targets", 1))
+
         # Count notes per stem in the window.
         note_counts: list[tuple[str, int]] = []
         for sid, name in name_by_sid.items():
@@ -539,21 +544,24 @@ def generate_one(
                 instr = midi.instruments[0] if midi.instruments else None
                 if instr is None:
                     continue
-                n = sum(1 for note in instr.notes
-                        if note.end > start and note.start < start + duration_sec)
-                note_counts.append((name, n))
+                nc = sum(1 for note in instr.notes
+                         if note.end > start and note.start < start + duration_sec)
+                note_counts.append((name, nc))
             except Exception:
                 continue
 
         if len(note_counts) >= 3:
-            # Keep candidates with above-median note count; this biases toward
-            # tracks that actually contribute material in the window.
+            # Top-N by note-count, biased toward tracks that actually
+            # contribute material in the window.
             sorted_by_notes = sorted(note_counts, key=lambda x: x[1], reverse=True)
-            top_half = sorted_by_notes[: max(3, len(sorted_by_notes) // 2)]
-            # Guard against tiny-note-count trivial picks.
-            top_half = [(n, c) for (n, c) in top_half if c >= 6] or top_half
-            pick_name, _ = rng.choice(top_half)
-            withhold_for_add = [pick_name]
+            # Filter out near-empty stems unless that would leave us with
+            # too few candidates.
+            non_trivial = [(n, c) for (n, c) in sorted_by_notes if c >= 6]
+            pool = non_trivial if len(non_trivial) >= n_targets else sorted_by_notes
+            # Sample top-half (note-rich half) then take the requested count.
+            top_half = pool[: max(n_targets, len(pool) // 2)]
+            rng.shuffle(top_half)
+            withhold_for_add = [n for n, _ in top_half[:n_targets]]
 
     state = build_mixture_state(
         track, sample_rate, start, duration_sec,
@@ -589,16 +597,60 @@ def generate_one(
     )
 
     if spec.primary_intent == "arrangement_add" and withhold_for_add:
+        # Build N forced add_track calls — one per withheld track. Use each
+        # track's original GM program (drum stems get the schema-valid
+        # placeholder ``program=0``; drum routing is keyed off ``is_drum``,
+        # not ``program``). state.pending_tracks already contains the
+        # withheld TrackStates.
+        forced_add: list[dict] = []
+        add_lines: list[str] = []
+        for name in withhold_for_add:
+            ts = state.pending_tracks.get(name)
+            if ts is None:
+                continue
+            prog_arg = 0 if ts.is_drum else max(0, min(127, int(ts.program)))
+            forced_add.append({
+                "name": "add_track",
+                "arguments": {"track_name": name, "program": prog_arg},
+            })
+            add_lines.append(
+                f"  - add_track {{track_name: '{name}', program: {prog_arg}}}"
+            )
+        n_forced_add = len(forced_add)
+        forced_block = "\n".join(add_lines)
+        if n_forced_add == 1:
+            description = (
+                f"The main move is to introduce the withheld track "
+                f"'{withhold_for_add[0]}' using add_track. Emit this call "
+                f"verbatim:\n{forced_block}\n"
+                "Your motivation should describe what it adds to the "
+                "mixture using additive verbs ('introduce', 'bring in', "
+                "'pad in', 'layer in', 'add a', 'drop in') — NEVER "
+                "restoration words ('missing', 'bring back', 'restore', "
+                "'return', 'reintroduce'). Pretend the track never existed "
+                "before — describe the CONTRIBUTION (pad, lift, grit, "
+                "warmth, counter-melody, low-end weight)."
+            )
+        else:
+            description = (
+                f"The main move is to introduce {n_forced_add} new "
+                "elements to the mixture. Emit each call below verbatim:\n"
+                f"{forced_block}\n"
+                "Your motivation MUST use additive verbs like 'introduce', "
+                "'bring in', 'pad in', 'layer in', 'add a', 'drop in' — "
+                "and must NEVER use restoration words: no 'missing', "
+                "'lacking', 'absent', 'empty spot', 'bring back', "
+                "'restore', 'return', 'reintroduce', 'put back'. Pretend "
+                "the tracks never existed before — describe the COMBINED "
+                "CONTRIBUTION across the new additions."
+            )
         pinned_intent = IntentCommitment(
             intent="arrangement_add",
             primary_tool="add_track",
-            target_track=withhold_for_add[0],
+            target_track=", ".join(withhold_for_add),
             target_program=None,
-            description=(
-                f"The main move is to bring back the withheld track "
-                f"'{withhold_for_add[0]}' using add_track. Your motivation "
-                f"should describe what it adds to the mixture."
-            ),
+            description=description,
+            forced_calls=tuple(forced_add),
         )
     elif spec.primary_intent == "remix" and spec.plan:
         # Reuse the original plan — re-sampling here would re-randomize

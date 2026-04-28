@@ -318,28 +318,23 @@ def build_hermes_system_prompt(track_metadata: str) -> str:
     )
 
 
-MOTIVATION_ONLY_PREAMBLE = (
-    "You are a professional music producer narrating ONE production move "
-    "per turn. The mixtures are INSTRUMENTAL multitracks rendered from MIDI; "
-    "they never contain vocals, rap, or any voice. This turn does not "
-    "require any tool calls — the operation is performed deterministically "
-    "by the pipeline. You only need to: first reason inside "
-    "<think>...</think> about WHY the producer is making this move (write "
-    "specifically about the tracks listed under 'Mixture metadata'); then "
-    "outside the think block, write exactly ONE line beginning with "
-    "'Production motivation: ' followed by a natural-language sentence in "
-    "the role's voice. Do NOT emit any <tool_call> blocks."
+EXTRACT_TRACK_PREAMBLE = (
+    "You are responding to a stem-extraction request. The mixture below "
+    "is an INSTRUMENTAL multitrack — no vocals or rap. Output exactly ONE "
+    "line: 'Production motivation: <imperative sentence telling someone "
+    "to extract a specific track>'. No <think> block. No <tool_call> "
+    "blocks. No additional text before or after the line."
 )
 
 
 def build_motivation_only_system_prompt(track_metadata: str) -> str:
     """System prompt for motivation-only intents (e.g. ``extract_track``).
 
-    Drops the ``<tools>`` block and the tool-call instructions; the model
-    only needs to reason about the production move and write a motivation
-    sentence. The pipeline performs the audio operation deterministically.
+    Drops the ``<tools>`` block and the ``<think>`` requirement; the model
+    is told only to emit a single imperative sentence. The pipeline
+    performs the audio operation deterministically.
     """
     return (
-        f"{MOTIVATION_ONLY_PREAMBLE}\n\n"
+        f"{EXTRACT_TRACK_PREAMBLE}\n\n"
         f"Mixture metadata: {track_metadata}"
     )

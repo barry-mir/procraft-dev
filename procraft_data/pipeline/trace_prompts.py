@@ -426,18 +426,21 @@ ABSTRACTION_LEVELS: dict[str, AbstractionLevel] = {
 # Sampled uniformly so every dataset entry is tagged with a primary_intent.
 # ---------------------------------------------------------------------------
 PRIMARY_INTENTS = [
-    "instrument_swap",            # category A
+    "instrument_swap",            # category A — multi-target
     "instrument_layer",           # category A
-    "effects",                    # category B (free choice of 1-3 apply_fx)
+    "effects",                    # category B (free choice of N apply_fx)
     "performance_timing",         # category C
     "performance_articulation",   # category C
-    "arrangement_add",            # category D
-    "arrangement_remove",         # category D
-    "arrangement_double",         # category D
+    "arrangement_add",            # category D — multi-target
+    "arrangement_remove",         # category D — multi-target
     "arrangement_mute_replace",   # category D
     "extract_track",              # category E — solo a single stem (deterministic, motivation-only)
     "remix",                      # category E — kept-set drop/swap + add-back from removed-set
 ]
+# ``arrangement_double`` is intentionally excluded from PRIMARY_INTENTS — the
+# audio change is too subtle to anchor a primary motivation. The
+# ``double_track`` tool itself stays registered so the LLM can still call it
+# from secondary slots of any other intent.
 
 # Legacy — kept only for test back-compat.
 MOTIVATION_TYPES = [
@@ -487,7 +490,6 @@ _INTENT_TOOL: dict[str, str] = {
     "performance_articulation":   "change_articulation",
     "arrangement_add":            "add_track",
     "arrangement_remove":         "remove_track",
-    "arrangement_double":         "double_track",
     "arrangement_mute_replace":   "mute_and_replace",
     "extract_track":              "extract_track_op",
     "remix":                      "remix_op",
@@ -518,7 +520,7 @@ class PromptSpec:
     temperature: float
     top_p: float = 0.95
     max_tokens: int = 6144
-    tool_count_hint: tuple[int, int] = (4, 7)
+    tool_count_hint: tuple[int, int] = (10, 15)
     withhold_for_add: list[str] = field(default_factory=list)   # filled for arrangement_add
     forced_calls: list[dict] = field(default_factory=list)      # filled for remix
     plan: dict = field(default_factory=dict)                    # remix bookkeeping
@@ -656,6 +658,28 @@ def _random_gm_program(rng: random.Random) -> int:
     """Pick a plausible melodic GM program (avoid sound-effect range)."""
     # Skip the high SFX range (96-127) for realism.
     return rng.randint(0, 95)
+
+
+def _n_arrangement_targets(
+    records: list[dict], rng: random.Random,
+    exclude_drums: bool = False,
+) -> int:
+    """How many tracks to pre-commit for a multi-target arrangement intent.
+
+    Returns ``0`` when the eligible pool is too small (the caller then
+    falls back to ``effects``). Otherwise returns
+    ``min(rng.randint(2, 4), eligible // 2)``.
+
+    Eligibility: drums excluded for intents that don't make sense on a
+    drum kit (currently ``instrument_swap`` because ``change_instrument``
+    keeps ``is_drum=True``). Total eligible must be ≥ 4 for a multi-
+    target intent — at smaller pools the user prefers to fall back to
+    a different intent rather than reduce the requested target count.
+    """
+    pool = [r for r in records if not (exclude_drums and r["is_drum"])]
+    if len(pool) < 4:
+        return 0
+    return min(rng.randint(2, 4), len(pool) // 2)
 
 
 def _parse_track_records(metadata: str) -> list[dict]:
@@ -928,13 +952,48 @@ def sample_primary_intent(
         )
 
     elif intent == "instrument_swap":
-        target_track = _pick_any_track(track_metadata, rng, exclude_drums=True)
-        target_program = _random_gm_program(rng)
+        records = _parse_track_records(track_metadata)
+        n = _n_arrangement_targets(records, rng, exclude_drums=True)
+        if n == 0:
+            return IntentCommitment(
+                intent="effects", primary_tool="apply_fx",
+                target_track=None, target_program=None,
+                description=_INTENT_TOOL["effects"],
+            )
+        candidates = [r for r in records if not r["is_drum"]]
+        rng.shuffle(candidates)
+        targets = candidates[:n]
+        forced: list[dict] = []
+        target_names: list[str] = []
+        for r in targets:
+            new_prog = _random_gm_program(rng)
+            for _ in range(32):
+                if new_prog != r["program"]:
+                    break
+                new_prog = _random_gm_program(rng)
+            forced.append({"name": "change_instrument",
+                           "arguments": {"track": r["name"],
+                                         "to_program": int(new_prog)}})
+            target_names.append(f"'{r['name']}' → GM {new_prog}")
+        forced_block = "\n".join(
+            f"  - change_instrument {{track: '{c['arguments']['track']}', "
+            f"to_program: {c['arguments']['to_program']}}}"
+            for c in forced
+        )
         description = (
-            f"The main move this turn is to swap the instrument on "
-            f"'{target_track}' using change_instrument, changing its GM "
-            f"program to {target_program}. Your motivation should mention "
-            f"swapping '{target_track}' to the new instrument character."
+            f"The main move this turn is to swap {n} instruments — each "
+            f"track listed below is re-voiced to a different GM program "
+            f"with change_instrument. Emit each call below verbatim:\n"
+            f"{forced_block}\n"
+            f"Your motivation should describe the re-voicing across these "
+            f"tracks: {', '.join(target_names)}."
+        )
+        return IntentCommitment(
+            intent=intent, primary_tool=tool,
+            target_track=", ".join(r["name"] for r in targets),
+            target_program=None,
+            description=description,
+            forced_calls=tuple(forced),
         )
 
     elif intent == "instrument_layer":
@@ -964,38 +1023,79 @@ def sample_primary_intent(
         )
 
     elif intent == "arrangement_add":
-        # Target chosen by the pipeline (it picks a stem to withhold and
-        # passes it back as ``withhold_for_add``). Here we just flag the
-        # intent; the actual track name is substituted in build_spec via
-        # the metadata string once withholding has been applied.
+        # Multi-target: pick how many tracks to withhold here (using
+        # metadata only). The concrete track names + forced_calls are
+        # built by ``generate_one`` after the note-rich selector picks
+        # the actual stems (it has MIDI access; we only have metadata).
+        records = _parse_track_records(track_metadata)
+        n = _n_arrangement_targets(records, rng)
+        if n == 0:
+            return IntentCommitment(
+                intent="effects", primary_tool="apply_fx",
+                target_track=None, target_program=None,
+                description=_INTENT_TOOL["effects"],
+            )
         description = (
-            "The main move is to INTRODUCE a NEW element to the mixture — "
-            "the track listed under 'available_to_add' is something the "
-            "producer is adding FOR THE FIRST TIME this session. Use the "
-            "add_track tool. Your motivation MUST use additive verbs like "
-            "'introduce', 'bring in', 'pad in', 'layer in', 'add a', 'drop "
-            "in' — and must NEVER use restoration words: no 'missing', "
-            "'lacking', 'absent', 'empty spot', 'bring back', 'restore', "
-            "'return', 'reintroduce', 'put back', 'needs the X back'. "
-            "Pretend the track never existed before — this is a new move. "
-            "Describe the CONTRIBUTION (pad, lift, grit, warmth, "
+            f"The main move is to INTRODUCE {n} NEW elements to the "
+            "mixture — each track listed under 'available_to_add' is "
+            "something the producer is adding FOR THE FIRST TIME this "
+            "session. Use the add_track tool, once per track listed. "
+            "Your motivation MUST use additive verbs like 'introduce', "
+            "'bring in', 'pad in', 'layer in', 'add a', 'drop in' — and "
+            "must NEVER use restoration words: no 'missing', 'lacking', "
+            "'absent', 'empty spot', 'bring back', 'restore', 'return', "
+            "'reintroduce', 'put back', 'needs the X back'. Pretend the "
+            "tracks never existed before — these are new moves. Describe "
+            "the COMBINED CONTRIBUTION (pad, lift, grit, warmth, "
             "counter-melody, low-end weight)."
+        )
+        # Stash N so generate_one knows how many tracks to withhold.
+        return IntentCommitment(
+            intent=intent, primary_tool=tool,
+            target_track=None, target_program=None,
+            description=description,
+            plan=(("n_targets", n),),
         )
 
     elif intent == "arrangement_remove":
-        target_track = _pick_redundant_target(track_metadata, rng)
-        description = (
-            f"The main move is to remove '{target_track}' from the mixture "
-            f"using remove_track. Your motivation should explain why dropping "
-            f"'{target_track}' clears up the mix."
+        records = _parse_track_records(track_metadata)
+        n = _n_arrangement_targets(records, rng)
+        if n == 0:
+            return IntentCommitment(
+                intent="effects", primary_tool="apply_fx",
+                target_track=None, target_program=None,
+                description=_INTENT_TOOL["effects"],
+            )
+        # Bias toward redundant tracks (same inst_class as another) the way
+        # the single-target picker did, but extend to N tracks.
+        cls_counts: Counter = Counter(_parse_inst_class_from_name(r["name"]) for r in records)
+        redundant = [r for r in records
+                     if cls_counts[_parse_inst_class_from_name(r["name"])] > 1]
+        non_drum = [r for r in records if not r["is_drum"]]
+        pool = redundant if len(redundant) >= n else non_drum if len(non_drum) >= n else records
+        rng.shuffle(pool)
+        targets = pool[:n]
+        forced = [{"name": "remove_track",
+                   "arguments": {"track": r["name"]}} for r in targets]
+        forced_block = "\n".join(
+            f"  - remove_track {{track: '{c['arguments']['track']}'}}"
+            for c in forced
         )
-
-    elif intent == "arrangement_double":
-        target_track = _pick_any_track(track_metadata, rng)
+        names = [r["name"] for r in targets]
         description = (
-            f"The main move is to thicken '{target_track}' with double_track "
-            f"(use offset_ms 5-20 and detune_cents ±5-15). Your motivation "
-            f"should describe doubling/thickening '{target_track}'."
+            f"The main move is to remove {n} tracks from the mixture so the "
+            f"remaining instrumentation breathes. Emit each call below "
+            f"verbatim:\n"
+            f"{forced_block}\n"
+            f"Your motivation should explain why dropping these tracks "
+            f"({', '.join(names)}) clears up the mix."
+        )
+        return IntentCommitment(
+            intent=intent, primary_tool=tool,
+            target_track=", ".join(names),
+            target_program=None,
+            description=description,
+            forced_calls=tuple(forced),
         )
 
     elif intent == "arrangement_mute_replace":
@@ -1168,7 +1268,7 @@ def build_spec(
     abstraction_level: str | None = None,
     hook: str | None = None,
     intent: IntentCommitment | None = None,
-    tool_count_range: tuple[int, int] = (4, 7),
+    tool_count_range: tuple[int, int] = (10, 15),
     temperature: float = 0.9,
     seed: int | None = None,
     # Back-compat shims kept so older callers don't break.
@@ -1297,23 +1397,37 @@ def build_spec(
     )
 
     if motivation_only:
+        # ``extract_track`` uses a dedicated, much simpler prompt: a
+        # single imperative sentence ("Extract the piano …") with verb
+        # variation and natural-name paraphrase. role / abstraction /
+        # hook are NOT used in the prompt body — they're still recorded
+        # on the spec for diversity bookkeeping but don't shape this
+        # text. The motivation here functions like a system instruction
+        # ("extract X"), not a producer's diagnostic note.
+        target_id = intent.target_track or ""
+        natural = natural_map.get(target_id, target_id)
         user = (
-            user_head
-            + f"Think inside <think>...</think> about WHY the producer is "
-              f"making this move, referencing ONLY tracks that appear in the "
-              f"Mixture metadata. Then, outside the think block, write "
-              f"exactly ONE line beginning with 'Production motivation: ' "
-              f"followed by a natural sentence that:\n"
-              f"  (a) sounds like it was written by {role_obj.name} — adopt their voice;\n"
-              f"  (b) uses the {level.name} phrasing style above;\n"
-              f"  (c) references or clearly evokes the hook \"{hook_str}\";\n"
-              f"  (d) describes the PRIMARY MOVE above in the role's natural language"
-            + (f" — the sentence MUST name '{intent.target_track}' explicitly."
-               if intent.target_track else ".")
-            + "\n\n"
-              f"Do NOT emit any <tool_call> blocks. After the closing "
-              f"</think> and the 'Production motivation:' line, stop "
-              f"generating."
+            f"{natural_block}"
+            f"EXTRACT MOVE: take the track '{target_id}' "
+            f"({natural}) out of the mixture and present it in isolation.\n\n"
+            f"Write exactly ONE line beginning with 'Production motivation: ' "
+            f"followed by a short imperative sentence (15-25 words) telling "
+            f"someone to extract this track. Vary the verb naturally — "
+            f"pick from {{extract, pull out, solo, isolate, separate, lift, "
+            f"take out, single out}}. Paraphrase the track name when it "
+            f"reads naturally ('piano' → 'keyboard track'; 'electric "
+            f"guitar' → 'rhythm guitar part'; the natural phrase above "
+            f"is a hint, not a script). Add ONE short clause explaining "
+            f"WHY (e.g. 'so we can hear the comping line', 'to study the "
+            f"groove', 'before mixing the rest').\n\n"
+            f"Examples (illustrative only — do NOT copy verbatim):\n"
+            f"  - \"Extract the piano so we can hear the comping line under all the noise.\"\n"
+            f"  - \"Solo the bass to study how the player moves between the changes.\"\n"
+            f"  - \"Pull the drums out — I want to focus on the kick pattern before EQing the rest.\"\n\n"
+            f"Do NOT emit any <tool_call> blocks, do NOT write a "
+            f"<think>...</think> block, and do NOT add any text after the "
+            f"motivation line. Output ONLY the single 'Production "
+            f"motivation: ...' line, then stop."
         )
     else:
         user = (
@@ -1343,10 +1457,14 @@ def build_spec(
             user += (
                 f"  - The first {n_forced} call(s) MUST be the forced "
                 f"tool_calls listed in the PRIMARY MOVE above (each one "
-                f"emitted verbatim).\n"
+                f"emitted verbatim, in any order).\n"
                 f"  - The remaining {n_extra} call(s) are free apply_fx "
-                f"calls used to glue the new variant together (any track, "
-                f"any effect; bias toward audible parameter values).\n"
+                f"calls. EACH ONE must be audibly substantial — pick "
+                f"medium or strong intensity from the EFFECT STRENGTH "
+                f"table; never 'light' / 'subtle'. Spread them across "
+                f"different tracks AND across different effect families "
+                f"(EQ, dynamics, modulation, distortion, reverb, delay) "
+                f"so the cumulative result is unmistakable.\n"
             )
         else:
             user += (
@@ -1354,15 +1472,16 @@ def build_spec(
                 f"({intent.primary_tool}) targeting the committed track "
                 f"where applicable.\n"
                 f"  - The remaining {max(0, chosen_count - 1)} call(s) are "
-                f"secondary — free to mix categories (instrument, effects, "
-                f"performance, arrangement) as long as they support the "
-                f"primary move.\n"
-                f"  - Use secondary calls to BE BOLD: chain aggressive FX "
-                f"on the primary target, stack a cross-category instrument "
-                f"swap on a second track, or stack a second arrangement "
-                f"move (e.g. if primary is remove, also swap another "
-                f"redundant track). The goal is a clearly audible overall "
-                f"difference.\n"
+                f"secondary. Bias HEAVILY toward apply_fx — the goal is a "
+                f"densely-treated mix where the primary move sits inside "
+                f"a clearly produced soundscape, not a clean one. Pick "
+                f"medium or strong intensity from the EFFECT STRENGTH "
+                f"table; never 'light' / 'subtle'. Spread the fx across "
+                f"different tracks AND across different effect families "
+                f"(EQ, dynamics, modulation, distortion, reverb, delay) "
+                f"so the cumulative result is unmistakable. A few "
+                f"cross-category instrument or arrangement moves on "
+                f"non-primary tracks are also welcome.\n"
             )
         user += (
             f"  - Every call: <tool_call>{{\"name\": ..., \"arguments\": ...}}</tool_call>\n"

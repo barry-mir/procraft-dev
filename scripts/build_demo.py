@@ -107,7 +107,7 @@ def _build_one(track_id: str, slakh_root: Path, seed: int,
     spec = build_spec(
         meta,
         intent=intent,
-        tool_count_range=(4, 7),
+        tool_count_range=(10, 15),
         seed=rng.randint(0, 2**31 - 1),
     )
 
@@ -381,16 +381,18 @@ def main():
 
     rng = random.Random(args.seed)
     seeds = [rng.randint(0, 2**31 - 1) for _ in args.tracks]
-    # Coverage bias: guarantee one ``extract_track`` and one ``remix`` slot
-    # in the demo grid (these are the new intents and we want the demo
-    # page to showcase them); the rest stay uniform random over
-    # PRIMARY_INTENTS via _build_one's default branch.
+    # Coverage bias: pin three slots in the demo grid — one
+    # ``extract_track`` (new motivation-only intent), one ``remix`` (new
+    # forced-call composite), and one ``effects`` (showcase the bumped
+    # 10-15 fx-per-entry behavior). The remaining slots stay uniform
+    # random over PRIMARY_INTENTS via _build_one's default branch.
     forced_intents: list[str | None] = [None] * len(args.tracks)
-    if len(args.tracks) >= 2:
+    pinned = ["extract_track", "remix", "effects"]
+    if len(args.tracks) >= len(pinned):
         slots = list(range(len(args.tracks)))
         rng.shuffle(slots)
-        forced_intents[slots[0]] = "extract_track"
-        forced_intents[slots[1]] = "remix"
+        for slot, intent in zip(slots[:len(pinned)], pinned):
+            forced_intents[slot] = intent
 
     print(f"Generating {len(args.tracks)} demo cases…")
     t0 = time.time()

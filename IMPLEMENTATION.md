@@ -63,23 +63,50 @@ continuous batching. Wall time for 10 entries ≈ 130–160 s.
   (REFERENCE_HOOKS = 167 · EMOTIONAL_HOOKS = 149 · SCENE_METAPHORS = 198 ·
   INSTRUMENT_SPECIFIC_HOOKS = 79 · TECHNICAL_HOOKS = 154 ·
   NEGATIVE_SPACE_HOOKS = 149 — total ≈ 900).
-- **primary_intent** (11): instrument_swap, instrument_layer, effects,
-  performance_{timing,articulation}, arrangement_{add,remove,double,mute_replace},
+- **primary_intent** (10): instrument_swap, instrument_layer, effects,
+  performance_{timing,articulation}, arrangement_{add,remove,mute_replace},
   extract_track, remix. Uniformly sampled so every run covers all
-  categories evenly.
+  categories evenly. ``arrangement_double`` is intentionally excluded
+  from the pool — the audio change is too subtle to anchor a primary
+  motivation; ``double_track`` itself stays registered as a tool so the
+  LLM can still call it from secondary slots of any other intent.
+- **tool_count_range** default `(10, 15)`. The LLM is asked for that
+  many tool_calls per entry — for non-`effects` primary intents, that's
+  the primary move(s) plus a dense pad of medium / strong `apply_fx`
+  calls. The prompt instructs "never light / subtle" and asks for
+  spread across both tracks AND effect families (EQ, dynamics,
+  modulation, distortion, reverb, delay) so the cumulative result is
+  unmistakable. Empirically a single subtle fx wasn't enough to make
+  the modified mix sound clearly produced.
 
 ### 3.2 Pre-committed intent target
-For most non-`effects` intents, `sample_primary_intent` pre-selects a
-`target_track` (and `target_program` for swaps / mute-replace). The prompt's
-"PRIMARY MOVE" block names it explicitly, so the motivation is guaranteed
-to refer to the executed action, and the executor is guaranteed to receive
-a compatible argument. For `arrangement_add`, `generate_one` withholds the
-chosen track from the MixtureState before rendering so the metadata
-advertises it as `available_to_add`. `extract_track` pre-commits a
-`target_track` (any class — drums OK) but emits no tool_calls; the
-pipeline performs the stem solo deterministically (see §3.11). `remix`
-pre-commits a partition + per-track decisions in `IntentCommitment.plan`
-(see §3.12) instead of a single target.
+For most non-`effects` intents, `sample_primary_intent` pre-commits the
+target — either a single track + program (e.g. `arrangement_mute_replace`,
+`instrument_layer`, `performance_*`) or a multi-target plan baked into
+`IntentCommitment.forced_calls`. Multi-target intents:
+
+- ``instrument_swap``, ``arrangement_remove``, ``arrangement_add`` —
+  pick `N = min(rng.randint(2, 4), TRACK_NUM // 2)` targets at sample
+  time. If `TRACK_NUM < 4` the intent falls back to ``effects`` (single-
+  target versions of these intents are no longer used). Each target gets
+  one forced tool_call; the validator (see §3.3) requires every forced
+  call to appear in the LLM's response.
+- ``arrangement_swap`` swap programs are chosen ≠ that track's own
+  original program (so each swap is non-trivial); collisions across
+  targets or with kept tracks are not enforced.
+- ``arrangement_remove`` biases toward redundant tracks (same
+  `inst_class` as another) when there are enough; falls back to non-drum
+  pool when the redundant pool is too small.
+- ``arrangement_add`` defers track selection to ``generate_one`` (it
+  needs MIDI access for note-richness); ``sample_primary_intent`` only
+  stashes the target count `N` in `IntentCommitment.plan["n_targets"]`.
+  ``generate_one`` picks the top-N note-rich stems for withholding,
+  builds N `add_track` forced calls, and rebuilds the spec.
+
+`extract_track` pre-commits a `target_track` (any class — drums OK) but
+emits no tool_calls; the pipeline performs the stem solo deterministically
+(see §3.11). `remix` pre-commits a partition + per-track decisions in
+`IntentCommitment.plan` (see §3.12).
 
 ### 3.3 Retry on empty motivation / missing primary tool
 `generate_one` wraps the LLM call in a bounded retry loop (default 3
@@ -192,16 +219,20 @@ program if it wants set-level mixture labels.
 
 ### 3.11 extract_track — deterministic stem solo
 This intent does not call any tool. `sample_primary_intent` picks one
-track (any class), and the LLM is given a tool-free system prompt
-(`build_motivation_only_system_prompt` — no `<tools>` block, no
-"emit tool_calls" instructions) and asked only for the motivation
-sentence. `generate_one` short-circuits at `_finalize_extract_track`:
+track (any class — drums OK). The LLM is given a stripped-down system
+prompt (`EXTRACT_TRACK_PREAMBLE` — no `<tools>` block, no `<think>`
+requirement) and a focused user prompt that bypasses the role × abstraction
+× hook system entirely. The user prompt asks for a single imperative
+sentence (15-25 words) with verb variation (extract / pull out / solo /
+isolate / separate / lift / take out / single out), a paraphrased
+natural name (e.g. `piano` → `keyboard track`), and one short clause
+explaining why. role / abstraction_level / hook fields are still sampled
+and recorded on the spec for diversity bookkeeping but don't shape this
+text. `generate_one` short-circuits at `_finalize_extract_track`:
 `original_audio` is the full mix; `modified_audio` is the target
 track's per-stem audio rendered alone; `pre_instruments` is the full
 mixture; `post_instruments` is `[the one extracted track]`;
-`tool_calls = []`. This produces a clean
-`(full_mix, motivation, single_stem)` triple useful for stem-isolation
-training.
+`tool_calls = []`.
 
 ### 3.12 remix — kept-set drop/swap + add-back from removed-set
 `_plan_remix` runs at sample time on the FULL mix metadata:
