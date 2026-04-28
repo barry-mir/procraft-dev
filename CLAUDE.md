@@ -28,6 +28,38 @@ journal-style content devalues it. If a change isn't worth recording in
 the document (e.g., a typo fix, a bug fix that doesn't alter behavior),
 skip the update — but verify that judgment, don't assume.
 
+## Ambiguous instructions: ask before implementing
+
+When the user gives a high-level or open-ended instruction — typically a
+new module, a new method inside the model, or a structural change to the
+pipeline — DO NOT begin implementing while any detail is unspecified.
+Pattern-match on these signals: a noun phrase without parameters
+("implement the encoder"), a verb without a target ("clean this up"), a
+plural without enumeration ("add the necessary checks"), or a reference
+to a paper / proposal section without committing to specific numbers.
+
+When that pattern fires:
+
+1. List every decision the user hasn't made yet. Be exhaustive: shapes,
+   dtypes, default values, edge-case behavior, error handling, file
+   placement, integration points, naming, what NOT to do.
+2. Ask the user about each one. Group related questions; don't fire
+   them off one at a time across many turns.
+3. Wait for answers. Do not pick "reasonable defaults" silently — every
+   default is a decision the user didn't make, and silent defaults are
+   the most common source of "that's not what I meant" rework.
+4. Once every detail is pinned down (and you can recite the spec back
+   without any "TBD" / "or maybe X" / "I'll figure that out as I go"
+   thoughts), implement.
+
+This is the opposite of "make a reasonable assumption and move on." Code
+is the most expensive form of communication; ambiguous requirements
+amplify that cost. Two minutes of clarifying questions is always
+cheaper than rewriting a module that solved the wrong problem.
+
+A short clarification message is preferable to a confidently wrong
+implementation. If the question feels too small to ask, ask anyway.
+
 ## Environments and storage
 
 - **Conda env: `pro-craft`** (Python 3.10) — installed with `pip install -e .`, pulls in multiafx (editable from `../multiafx`), pretty_midi, pyFluidSynth (with conda-forge libfluidsynth), torch 2.5.1+cu121, torchaudio, soundfile. Torch is pinned to cu121 because the box's driver is 550.54.14 / CUDA 12.4 — do **not** reinstall a cu13x wheel, it breaks CUDA.
