@@ -354,13 +354,18 @@ targets are NOT honored — simplification).
   Used by ``procraft_data/sources/slakh.py`` and the demo.
 - **Lakh MIDI (LMD-full)** — 178,561 raw multi-instrument MIDIs at
   `/nas/pro-craft/raw/lakh_midi/lmd_full/<first-char>/<md5>.mid`,
-  deduplicated to **20,797** canonical tracks via
-  ``CAugBERT_0.99_with_CLaMP_0.99.json`` (Jeong et al.,
-  github.com/jech2/LMD_Deduplication). The list of canonical paths
-  lives at ``/nas/pro-craft/raw/lakh_midi/kept_paths.txt``. No loader
-  yet — Lakh files are single multi-instrument MIDIs (not per-stem
-  like Slakh) and need a thin splitter before they can feed the
-  pipeline.
+  deduplicated to **140,427** kept tracks via
+  ``CAugBERT_0.99_with_CLaMP_0.99.json`` (Jeong et al., 2025;
+  arxiv.org/abs/2509.16662, github.com/jech2/LMD_Deduplication).
+  The filter file is a `{canonical_md5: [duplicate_md5s]}` mapping
+  defining 20,797 duplicate groups; the 38,134 duplicate values are
+  dropped, the 20,797 canonical keys are kept, and the 119,630 raw
+  files not mentioned in the filter at all (unique tracks with no
+  near-duplicates) are also kept. Total kept = 140,427 = 178,561 −
+  38,134. The list of kept paths lives at
+  ``/nas/pro-craft/raw/lakh_midi/kept_paths.txt``. No loader yet —
+  Lakh files are single multi-instrument MIDIs (not per-stem like
+  Slakh) and need a thin splitter before they can feed the pipeline.
 
 ## 5. Open items / next
 
