@@ -371,6 +371,23 @@ AWQ4 setup, LLM dominates at ~73% of per-entry total; render +
 executor combined are < 7%. The wall/sum-of-totals ratio reports the
 parallel speedup observed at the current `--workers` setting.
 
+**Throughput sweep results** on a 50-track Lakh sample:
+
+| config                                    | s/entry (wall) | speedup |
+|-------------------------------------------|----------------|---------|
+| baseline: workers=4, max-num-seqs=6       | 21.75          | 1.00x   |
+| workers=8, max-num-seqs=16                | 13.6           | 1.60x   |
+| workers=12, max-num-seqs=16               | 16.7           | 1.30x   |
+
+Workers=8 + max-num-seqs=16 is the sweet spot. Going to workers=12
+with the same max-num-seqs slows things down — vLLM is saturated and
+extra workers add queueing overhead. To unlock further speedup we'd
+need Tier 2 (speculative decoding via a draft model) or Tier 3
+(larger GPU / smaller model).
+
+For the full Lakh sweep at 94,821 clean tracks × 13.6 s/entry, ETA is
+~358 hours ≈ **~15 days** continuous on the 3090.
+
 ### 3.14 Shared peak-normalize at output
 `_shared_peak_normalize(original, modified, target=0.95)` computes one
 scale factor from `max(|original|, |modified|)`; applies to both.
@@ -397,9 +414,41 @@ targets are NOT honored — simplification).
   files not mentioned in the filter at all (unique tracks with no
   near-duplicates) are also kept. Total kept = 140,427 = 178,561 −
   38,134. The list of kept paths lives at
-  ``/nas/pro-craft/raw/lakh_midi/kept_paths.txt``. No loader yet —
-  Lakh files are single multi-instrument MIDIs (not per-stem like
-  Slakh) and need a thin splitter before they can feed the pipeline.
+  ``/nas/pro-craft/raw/lakh_midi/kept_paths.txt``.
+
+  **Sanity filter** (``scripts/lakh_sanity_filter.py``) drops tracks
+  that fail any of: parse error, total duration < 30 s, < 3
+  instruments with ≥ 16 notes each, every melodic stem on GM 0 (the
+  unset-program default), or ≥ 3 drum-flagged stems. Output:
+  ``kept_paths_clean.txt`` + a per-track skip-reason audit file.
+
+  **Loader** (``procraft_data/sources/lakh.py``). Lakh files are
+  single multi-instrument MIDIs, not per-stem like Slakh. The loader
+  splits each pretty_midi.Instrument into a cached per-stem file at
+  ``/nas/pro-craft/cache/lakh_stems/<first>/<md5>/MIDI/<sid>.mid`` so
+  the existing Slakh-shaped ``TrackMeta`` interface (and the rest of
+  the pipeline) just works. A GM-family map gives each stem a
+  Slakh-equivalent ``inst_class`` for the natural-name machinery.
+
+- **Generated dataset** — output of the full-corpus generation lives
+  at ``/nas/pro-craft/dataset/lakh/<first>/<md5>/`` with one
+  ``entry.json`` plus ``original.wav``, ``modified.wav``,
+  ``original.mid``, ``modified.mid`` per track. ``entry.json`` is the
+  full DatasetEntry serialization (text, tool_calls, instruments,
+  timing). ``extract_track`` entries carry a synthetic
+  ``[{"name": "extract_track", "arguments": {"track": <target>}}]``
+  tool_call so the on-disk format is uniform across intents.
+
+- **Tooling.** ``scripts/generate_lakh.py`` reads
+  ``kept_paths_clean.txt``, samples one random PRIMARY_INTENT per
+  track, and dispatches generation across N workers (idempotent —
+  skips tracks whose ``entry.json`` already exists).
+  ``scripts/scan_dataset.py`` walks the dataset and validates every
+  ``entry.json`` against the same leak / silence / artifact-presence
+  rules used by the in-loop validator; writes
+  ``lakh.failures.txt`` for re-rendering.
+  ``scripts/regenerate_failures.py`` reads that list, wipes the
+  failed dirs, and re-runs through the same per-task function.
 
 ## 5. Open items / next
 
@@ -434,4 +483,9 @@ targets are NOT honored — simplification).
 | `scripts/serve_qwen3.sh` | vLLM launch (3090, 32K ctx, `max-num-seqs 6`) |
 | `scripts/smoke_qwen_all_motivations.py` | 4-worker smoke run covering all PRIMARY_INTENTS |
 | `scripts/build_demo.py` | One-case-per-intent demo page (random tracks per run); MP3 + MIDI sidecars |
+| `procraft_data/sources/lakh.py` | Lakh loader. Splits multi-instrument MIDI by Instrument; per-stem cache. |
+| `scripts/lakh_sanity_filter.py` | Rule-based sanity filter on top of the Jeong et al. dedup list. |
+| `scripts/generate_lakh.py` | Full-corpus Lakh generator (workers, idempotent, flat per-track output). |
+| `scripts/scan_dataset.py` | Validate every entry.json; write lakh.failures.txt. |
+| `scripts/regenerate_failures.py` | Wipe + re-run failed entries. |
 | `tests/test_*.py` | Regression tests (14 currently passing) |
