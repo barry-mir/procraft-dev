@@ -146,9 +146,9 @@ _LEVEL_PRESERVING_EFFECTS: frozenset[str] = frozenset({
     # Distortion / saturation / drive — artistic intent is character/timbre,
     # but the DSP implementation also pushes the output level up substantially.
     # Without compensation, "add some grit" silently becomes "add grit AND
-    # +6-12 dB". Compensate by peak-matching output to input.
-    # Deliberately EXCLUDED: gain / loudness / vol / compand — those effects
-    # exist specifically to change level.
+    # +6-12 dB". Compensate by RMS-matching output to input.
+    # Deliberately EXCLUDED: gain / loudness / vol — those exist
+    # specifically to change level.
     "sox_overdrive",
     "ta_overdrive",
     "am_tanh_distortion",
@@ -156,6 +156,15 @@ _LEVEL_PRESERVING_EFFECTS: frozenset[str] = frozenset({
     "am_bit_crush",
     "sox_contrast",
     "ta_contrast",
+    # ``sox_compand`` is the SoX compander/expander. With only attack /
+    # decay / soft_knee specified (the way our LLM uses it), sox falls
+    # back to its default transfer-function points
+    # ``[(-70,-70), (-60,-20), (0,0)]`` — a +40 dB lift at the -60 dB
+    # input level that interpolates to ~+6 dB on a typical -10 dBFS
+    # drum hit. Producers calling it expect dynamics shaping ("gain
+    # reduction"), not 6 dB of free makeup. RMS-match keeps the
+    # dynamics shaping while neutralizing the unintended level boost.
+    "sox_compand",
 })
 
 

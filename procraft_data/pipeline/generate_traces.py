@@ -257,7 +257,37 @@ def _clean_motivation(motivation: str, natural_map: dict[str, str]) -> str:
     - Identifiers with more characters are replaced first so
       ``strings__continued`` doesn't get partially matched as ``strings``.
     """
-    if not motivation or not natural_map:
+    if not motivation:
+        return motivation
+    # GM program-number leakage scrub. The system prompt forbids
+    # writing "GM 85" / "program 33" / "to_program: 0" literally in the
+    # motivation, but the model still echoes ~25% of the time. Replace
+    # the parenthetical numeric reference with the GM program name from
+    # ``pretty_midi.program_to_instrument_name`` so the sentence reads
+    # in plain English. Patterns covered:
+    #   - "to GM 85" / "GM 85"   →  "to String Ensemble 1" / "String Ensemble 1"
+    #   - "(GM 85)"              →  "" (drop — the surrounding word
+    #                                 already names the instrument)
+    #   - "program 33"           →  "Electric Bass (finger)"
+    #   - "to_program: 33"       →  "Electric Bass (finger)"
+    import pretty_midi as _pm
+    def _gm_name(prog: int) -> str:
+        try:
+            return _pm.program_to_instrument_name(max(0, min(127, int(prog))))
+        except Exception:
+            return ""
+    def _replace_gm(match: "re.Match") -> str:
+        prog = int(match.group("prog"))
+        name = _gm_name(prog)
+        return name or match.group(0)
+    motivation = re.sub(r"\(\s*GM\s+(?P<prog>\d+)\s*\)", "", motivation, flags=re.I)
+    motivation = re.sub(r"\bGM\s+(?P<prog>\d+)\b", _replace_gm, motivation, flags=re.I)
+    motivation = re.sub(r"\bto_program\s*[:=]\s*(?P<prog>\d+)\b", _replace_gm, motivation, flags=re.I)
+    motivation = re.sub(r"\bprogram\s+(?P<prog>\d+)\b", _replace_gm, motivation, flags=re.I)
+    # Collapse any double-spaces left behind by the parenthetical drop.
+    motivation = re.sub(r" {2,}", " ", motivation)
+
+    if not natural_map:
         return motivation
     # Single-word identifiers that are also real English words — the model
     # uses them naturally in prose ("this bright acoustic piano is…") and
@@ -359,6 +389,18 @@ def _result_is_valid(motivation: str, tool_calls: list[dict],
         return True, ""
     if not any(tc.get("name") == spec.primary_tool for tc in tool_calls):
         return False, f"primary tool {spec.primary_tool!r} missing from tool_calls"
+    # Under-emission check: the prompt asks for ``chosen_count`` calls
+    # exactly. Allow a 2-call slack to accommodate small dedup losses
+    # from ``_canonicalize_tool_call``, but reject anything well below
+    # the requested count — a 12-call request that comes back with 2
+    # calls means the model gave up on the secondary slots and the
+    # output won't match the "densely-treated mix" we promise downstream.
+    min_required = max(1, int(spec.chosen_count) - 2)
+    if spec.chosen_count and len(tool_calls) < min_required:
+        return False, (
+            f"too few tool_calls: got {len(tool_calls)}, need ≥ {min_required} "
+            f"(chosen_count = {spec.chosen_count})"
+        )
     return True, ""
 
 

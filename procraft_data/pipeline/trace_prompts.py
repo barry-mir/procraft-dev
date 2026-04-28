@@ -74,9 +74,13 @@ Hard rules (NEVER violate):
        guitar" or "the rhythm guitar" / "the lead guitar".
      * NEVER write `guitar_1`, `organ_2`, `strings__continued` literally in
        the motivation sentence.
+     * NEVER write GM program numbers literally in the motivation: no
+       "GM 85", "GM 12", "program 0", "to_program: 33". Real producers
+       say "string warmth" / "Hammond" / "fretless bass" — paraphrase
+       into what the new instrument SOUNDS like, not its number.
    In tool_call ``arguments``, always use the exact identifier from the
-   metadata (e.g. `"track": "guitar_1"`). Motivation = natural, tool_calls
-   = exact.
+   metadata (e.g. `"track": "guitar_1"`) and the literal program
+   number. Motivation = natural / paraphrased, tool_calls = exact.
 """
 
 
@@ -429,18 +433,17 @@ PRIMARY_INTENTS = [
     "instrument_swap",            # category A — multi-target
     "instrument_layer",           # category A
     "effects",                    # category B (free choice of N apply_fx)
-    "performance_timing",         # category C
-    "performance_articulation",   # category C
     "arrangement_add",            # category D — multi-target
     "arrangement_remove",         # category D — multi-target
     "arrangement_mute_replace",   # category D
     "extract_track",              # category E — solo a single stem (deterministic, motivation-only)
     "remix",                      # category E — kept-set drop/swap + add-back from removed-set
 ]
-# ``arrangement_double`` is intentionally excluded from PRIMARY_INTENTS — the
-# audio change is too subtle to anchor a primary motivation. The
-# ``double_track`` tool itself stays registered so the LLM can still call it
-# from secondary slots of any other intent.
+# Intents intentionally excluded from PRIMARY_INTENTS (audio changes too
+# subtle to anchor a primary motivation), but their tools remain
+# registered so the LLM can still call them from secondary slots of any
+# other intent: ``arrangement_double`` (double_track), ``performance_timing``
+# (humanize_timing), ``performance_articulation`` (change_articulation).
 
 # Legacy — kept only for test back-compat.
 MOTIVATION_TYPES = [
@@ -486,8 +489,6 @@ _INTENT_TOOL: dict[str, str] = {
     "instrument_swap":            "change_instrument",
     "instrument_layer":           "layer_instrument",
     "effects":                    "apply_fx",
-    "performance_timing":         "humanize_timing",
-    "performance_articulation":   "change_articulation",
     "arrangement_add":            "add_track",
     "arrangement_remove":         "remove_track",
     "arrangement_mute_replace":   "mute_and_replace",
@@ -525,6 +526,7 @@ class PromptSpec:
     forced_calls: list[dict] = field(default_factory=list)      # filled for remix
     plan: dict = field(default_factory=dict)                    # remix bookkeeping
     motivation_only: bool = False    # True for extract_track — no <tools> block
+    chosen_count: int = 0            # the EXACTLY-N value embedded in the user prompt
 
     def as_messages(self) -> list[dict]:
         return [
@@ -1004,22 +1006,6 @@ def sample_primary_intent(
             f"of '{target_track}' using layer_instrument with additional_program "
             f"{target_program} at mix_ratio 0.4-0.7. Your motivation should "
             f"describe the layered texture."
-        )
-
-    elif intent == "performance_timing":
-        target_track = _pick_any_track(track_metadata, rng)
-        description = (
-            f"The main move is humanize_timing on '{target_track}' with "
-            f"max_offset_ms between 10 and 30. Your motivation should "
-            f"describe a feel/timing change on '{target_track}'."
-        )
-
-    elif intent == "performance_articulation":
-        target_track = _pick_any_track(track_metadata, rng, exclude_drums=True)
-        description = (
-            f"The main move is change_articulation on '{target_track}' with "
-            f"style in {{legato, staccato, tenuto}}. Your motivation should "
-            f"describe the articulation shift on '{target_track}'."
         )
 
     elif intent == "arrangement_add":
@@ -1511,6 +1497,12 @@ def build_spec(
             f"  - In every call's ``track`` argument, use the EXACT identifier "
             f"from the Mixture metadata (e.g. `guitar_1`) — never the quoted "
             f"program name.\n"
+            f"  - COUNT IS ENFORCED: emit exactly {chosen_count} tool_call "
+            f"blocks. Outputs with fewer than {max(1, chosen_count - 2)} "
+            f"calls will be DISCARDED and the request retried — do not stop "
+            f"early just because you've covered the primary move. Fill the "
+            f"remaining slots with apply_fx calls that elaborate the "
+            f"motivation as instructed above.\n"
             f"After the {chosen_count}th </tool_call>, stop generating."
         )
 
@@ -1529,6 +1521,7 @@ def build_spec(
         forced_calls=[dict(c) for c in intent.forced_calls],
         plan={k: v for k, v in intent.plan},
         motivation_only=motivation_only,
+        chosen_count=chosen_count if not motivation_only else 0,
     )
 
 
