@@ -13,6 +13,14 @@ _THINK_RE = re.compile(r"<think>(.*?)</think>", re.DOTALL)
 # the reasoning trace.
 _OPEN_THINK_MISSING_RE = re.compile(r"^(.*?)</think>", re.DOTALL)
 _TOOL_CALL_RE = re.compile(r"<tool_call>\s*(\{.*?\})\s*</tool_call>", re.DOTALL)
+# Extract the explicit production motivation line (case-insensitive). The
+# model's chain-of-thought sometimes leaks into the body when it forgets
+# the <think> tags entirely; in that case we still want the canonical
+# "Production motivation: ..." line if it appears anywhere.
+_MOTIVATION_LINE_RE = re.compile(
+    r"(?:^|\n)\s*Production\s+motivation\s*:\s*(.*?)(?:\n|$)",
+    re.IGNORECASE,
+)
 
 
 @dataclass
@@ -51,5 +59,21 @@ def parse_response(text: str) -> ParsedResponse:
         except json.JSONDecodeError:
             continue
 
-    motivation = _TOOL_CALL_RE.sub("", body).strip()
+    # Look for an explicit "Production motivation: ..." line first. This
+    # guards against the case where the model skipped the <think> tags
+    # entirely and dumped its chain-of-thought into the body — without
+    # this anchor, the parser would have returned the entire reasoning
+    # blob as the motivation. If the line is found anywhere in the
+    # response (body or even inside the leaked reasoning), we use just
+    # that single line.
+    motivation_match = _MOTIVATION_LINE_RE.search(body)
+    if motivation_match is None and think is None:
+        # If think is None and no body match, also search the raw text —
+        # otherwise an unexpected response shape stays empty here.
+        motivation_match = _MOTIVATION_LINE_RE.search(text)
+    if motivation_match:
+        motivation = motivation_match.group(1).strip()
+    else:
+        # Fallback: legacy behaviour — strip tool_calls, keep what's left.
+        motivation = _TOOL_CALL_RE.sub("", body).strip()
     return ParsedResponse(think=think, motivation=motivation, tool_calls=tool_calls, raw=text)

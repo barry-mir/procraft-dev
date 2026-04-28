@@ -54,7 +54,7 @@ echo "HF_HOME=$HF_HOME"
 # No --enforce-eager  → vLLM captures CUDA graphs on first boot (adds ~10-15
 #                   min one-time startup cost; subsequent boots reuse the
 #                   compile cache at ~/.cache/vllm).
-MAX_NUM_SEQS="${PROCRAFT_VLLM_MAX_NUM_SEQS:-6}"
+MAX_NUM_SEQS="${PROCRAFT_VLLM_MAX_NUM_SEQS:-16}"
 
 exec vllm serve "$MODEL" \
     --port "$PORT" \

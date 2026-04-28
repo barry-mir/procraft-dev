@@ -390,6 +390,13 @@ def _result_is_valid(motivation: str, tool_calls: list[dict],
     """
     if not motivation.strip():
         return False, "empty motivation line"
+    # Reject motivations that look like chain-of-thought leakage rather
+    # than a producer's motivation line. Qwen3-Thinking occasionally
+    # forgets the <think> tags entirely and dumps its reasoning into the
+    # body; without this guard the entry's "motivation" ends up being
+    # several paragraphs of "Okay, let's tackle this. The user is..."
+    if _looks_like_prompt_leak(motivation):
+        return False, "motivation looks like leaked chain-of-thought"
     if spec.motivation_only:
         return True, ""
     if spec.forced_calls:
@@ -430,6 +437,7 @@ def _finalize_extract_track(
     retry_reasons: list[str], entry_idx: int, out_dir: Path,
     sample_rate: int,
     render_sec: float = 0.0, total_start: float = 0.0,
+    stem_override: str | None = None,
 ) -> "DatasetEntry":
     """Build the DatasetEntry for an ``extract_track`` run.
 
@@ -455,7 +463,7 @@ def _finalize_extract_track(
     mix_rms_original = _safe_rms(original_mix)
     mix_rms_modified = _safe_rms(modified_mix)
 
-    stem = f"entry_{track.track_id}_{spec.category_focus}_{entry_idx:02d}"
+    stem = stem_override or f"entry_{track.track_id}_{spec.category_focus}_{entry_idx:02d}"
     out_dir.mkdir(parents=True, exist_ok=True)
     orig_path = out_dir / f"{stem}_original.wav"
     mod_path = out_dir / f"{stem}_modified.wav"
@@ -491,7 +499,15 @@ def _finalize_extract_track(
         temperature=spec.temperature,
         motivation=cleaned_motivation,
         think=tr.reasoning_text,
-        tool_calls=[],   # the operation is not LLM-driven
+        # The extraction is performed deterministically by the pipeline,
+        # not the LLM — but we still record a synthetic tool_call entry
+        # so the on-disk format is uniform across intents (downstream
+        # consumers can iterate ``entry["tool_calls"]`` without
+        # special-casing extract_track).
+        tool_calls=[{
+            "name": "extract_track",
+            "arguments": {"track": target_name},
+        }],
         executed_ok=bool(cleaned_motivation.strip()),
         executed_errors=[],
         tool_effects=[],
@@ -512,6 +528,44 @@ def _finalize_extract_track(
     )
     (out_dir / f"{stem}.json").write_text(json.dumps(entry.to_json(), indent=2))
     return entry
+
+
+_PROMPT_LEAK_PATTERNS = [
+    re.compile(r"\bokay,\s+let'?s\s+tackle\b", re.I),
+    re.compile(r"\bthe\s+user\s+(?:is|wants|specifies|asks)\b", re.I),
+    re.compile(r"\bPRIMARY\s+MOVE\b"),
+    re.compile(r"<tool_call>"),
+    re.compile(r"</?think>"),
+    re.compile(r"\bI\s+(?:need\s+to|should|must|have\s+to)\b", re.I),
+    re.compile(r"\bWait\b,\s*(?:the|but|no|maybe)\b", re.I),
+    re.compile(r"\bLet me\s+(?:check|think|see|plan)\b", re.I),
+    # The intent description body itself sometimes leaks verbatim:
+    re.compile(r"\bemit\s+each\s+call\s+below\s+verbatim\b", re.I),
+    re.compile(r"\bDROPS\s*\(.*?\):", re.I),
+    re.compile(r"\bSWAPS\s*\(.*?\):", re.I),
+    re.compile(r"\bADDS\s*\(.*?\):", re.I),
+]
+
+
+def _looks_like_prompt_leak(motivation: str) -> bool:
+    """Return True if ``motivation`` appears to be model chain-of-thought
+    or prompt-fragment leakage rather than a producer's motivation line.
+
+    Two signals: (a) length — production motivations are 1-2 sentences,
+    so anything > 800 chars is suspicious; (b) regex hits on
+    chain-of-thought stock phrases ("Okay, let's tackle", "the user is",
+    "Wait, ..."), <think>/<tool_call> tags, or the literal section
+    headings from the user prompt (DROPS:, SWAPS:, ADDS:, PRIMARY MOVE,
+    "emit each call below verbatim").
+    """
+    if not motivation:
+        return False
+    if len(motivation) > 800:
+        return True
+    for pat in _PROMPT_LEAK_PATTERNS:
+        if pat.search(motivation):
+            return True
+    return False
 
 
 def _remix_motivation_grounded(motivation: str, spec: PromptSpec) -> tuple[bool, str]:
@@ -596,6 +650,7 @@ def generate_one(
     entry_idx: int = 0,
     withhold_for_add: list[str] | None = None,
     max_retries: int = 3,
+    stem_override: str | None = None,
 ) -> DatasetEntry:
     """One (prompt → response → execute → save) round-trip, with retry.
 
@@ -845,6 +900,7 @@ def generate_one(
             attempt=attempt, retry_reasons=retry_reasons,
             entry_idx=entry_idx, out_dir=out_dir, sample_rate=sample_rate,
             render_sec=_render_sec, total_start=_t_total_start,
+            stem_override=stem_override,
         )
 
     errors: list[str] = []
@@ -908,7 +964,7 @@ def generate_one(
     mix_rms_original = _safe_rms(original_mix)
     mix_rms_modified = _safe_rms(modified_mix)
 
-    stem = f"entry_{track.track_id}_{spec.category_focus}_{entry_idx:02d}"
+    stem = stem_override or f"entry_{track.track_id}_{spec.category_focus}_{entry_idx:02d}"
     out_dir.mkdir(parents=True, exist_ok=True)
     orig_path = out_dir / f"{stem}_original.wav"
     mod_path = out_dir / f"{stem}_modified.wav"
