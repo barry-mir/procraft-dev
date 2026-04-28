@@ -6,6 +6,28 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 Repository holds the research proposal `prop_timbre_factorized_003.md` plus the initial data-pipeline scaffold. The proposal is the authoritative spec; when implementing, cite the section you are following.
 
+## IMPLEMENTATION.md upkeep (mandatory)
+
+`IMPLEMENTATION.md` is the unified source-of-truth document for paper
+writing. It describes only the **currently-implemented** pipeline — no
+progress journal, no abandoned approaches, no daily notes. After making
+any non-trivial change to the code (adding a method, replacing one,
+removing one, changing a default that matters), do the following in the
+same turn:
+
+1. Read `IMPLEMENTATION.md` end-to-end.
+2. Decide what to update: section text, default values cited, file-map
+   row, the four-dimension counts in §3.1, etc.
+3. Decide what to remove: any sentence describing behavior the code no
+   longer has. Methods that were replaced, parameters no longer used,
+   files that were deleted.
+4. Apply both. Keep the document complete and free of stale text.
+
+The document's value is that it always matches the code. Stale or
+journal-style content devalues it. If a change isn't worth recording in
+the document (e.g., a typo fix, a bug fix that doesn't alter behavior),
+skip the update — but verify that judgment, don't assume.
+
 ## Environments and storage
 
 - **Conda env: `pro-craft`** (Python 3.10) — installed with `pip install -e .`, pulls in multiafx (editable from `../multiafx`), pretty_midi, pyFluidSynth (with conda-forge libfluidsynth), torch 2.5.1+cu121, torchaudio, soundfile. Torch is pinned to cu121 because the box's driver is 550.54.14 / CUDA 12.4 — do **not** reinstall a cu13x wheel, it breaks CUDA.
