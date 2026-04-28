@@ -205,15 +205,6 @@ def apply_fx(args: dict, state: MixtureState, renderer: Renderer,
     track.audio = after
 
 
-def change_velocity(args: dict, state: MixtureState, renderer: Renderer,
-                    duration_sec: float) -> None:
-    track = _require_track(state, _get_track_arg(args))
-    scale = float(args["scale_factor"])
-    for note in track.midi.notes:
-        note.velocity = max(1, min(127, int(round(note.velocity * scale))))
-    track.audio = renderer.render_track(track, duration_sec)
-
-
 def humanize_timing(args: dict, state: MixtureState, renderer: Renderer,
                     duration_sec: float, rng: random.Random | None = None) -> None:
     """Gaussian timing jitter with light coupled velocity variation.
@@ -323,7 +314,6 @@ EXECUTORS = {
     "change_instrument": change_instrument,
     "layer_instrument": layer_instrument,
     "apply_fx": apply_fx,
-    "change_velocity": change_velocity,
     "humanize_timing": humanize_timing,
     "change_articulation": change_articulation,
     "add_track": add_track,

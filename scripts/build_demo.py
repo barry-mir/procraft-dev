@@ -90,14 +90,16 @@ def _preview_metadata(track, duration: float) -> str:
 
 def _build_one(track_id: str, slakh_root: Path, seed: int,
                client: VLLMClient, sf_path: Path,
-               work_dir: Path, duration: float) -> dict:
+               work_dir: Path, duration: float,
+               forced_intent: str | None = None) -> dict:
     renderer = _get_renderer(sf_path)
     track = load_track(slakh_root / track_id)
     meta = _preview_metadata(track, duration)
 
     rng = random.Random(seed)
-    # Random intent per track (uniform over 10)
-    intent_name = rng.choice(PRIMARY_INTENTS)
+    # Caller-pinned intent (used to guarantee coverage in the demo grid),
+    # otherwise uniform random over PRIMARY_INTENTS.
+    intent_name = forced_intent or rng.choice(PRIMARY_INTENTS)
     intent = sample_primary_intent(
         meta, forced_intent=intent_name,
         seed=rng.randint(0, 2**31 - 1),
@@ -123,14 +125,38 @@ def _build_one(track_id: str, slakh_root: Path, seed: int,
     }
 
 
+def _format_instruments(records: list[dict], prefix: str = "pre ") -> str:
+    """One line per snapshot: 'pre : piano (Acoustic Grand Piano), bass …'."""
+    if not records:
+        return f"{prefix}: <empty>"
+    parts = []
+    for r in records:
+        name = r.get("name", "?")
+        prog_name = r.get("midi_program_name") or ""
+        parts.append(f"{name} ({prog_name})" if prog_name else name)
+    label = "post" if prefix.startswith("post") else "pre "
+    return f"{label}: " + ", ".join(parts)
+
+
 def _render_html(cases: list[dict]) -> str:
     cards = []
     for i, c in enumerate(cases, 1):
         e = c["entry"]
         orig_rel = c["original_mp3_rel"]
         mod_rel = c["modified_mp3_rel"]
+        orig_mid_rel = c.get("original_midi_rel", "")
+        mod_mid_rel = c.get("modified_midi_rel", "")
         # Extract a "what to listen for" hint from the primary tool call.
         def _listen_hint(entry) -> str:
+            # Special-case the two motivation-driven intents that don't go
+            # through the regular tool_call → executor pipeline.
+            if entry.primary_intent == "extract_track":
+                return f"soloed: {entry.target_track}"
+            if entry.primary_intent == "remix":
+                drops = sum(1 for c in entry.tool_calls if c["name"] == "remove_track")
+                swaps = sum(1 for c in entry.tool_calls if c["name"] == "change_instrument")
+                adds = sum(1 for c in entry.tool_calls if c["name"] == "add_track")
+                return f"remix: {drops} drop / {swaps} swap / {adds} add"
             for tc in entry.tool_calls:
                 if tc["name"] != entry.primary_tool:
                     continue
@@ -151,8 +177,6 @@ def _render_html(cases: list[dict]) -> str:
                     return f"swapped: {tgt}  GM {fp} → {tp}"
                 if name == "layer_instrument":
                     return f"layered: {tgt}  + GM {a.get('additional_program','?')} @ {a.get('mix_ratio','?')}"
-                if name == "change_velocity":
-                    return f"velocity: {tgt} × {a.get('scale_factor','?')}"
                 if name == "humanize_timing":
                     return f"humanize: {tgt}  ±{a.get('max_offset_ms','?')} ms"
                 if name == "change_articulation":
@@ -203,9 +227,18 @@ def _render_html(cases: list[dict]) -> str:
       <audio controls preload="none" src="{html.escape(mod_rel)}"></audio>
     </div>
   </div>
+  {(f'<p class="midi"><span class="label-inline">MIDI:</span> '
+    f'<a href="{html.escape(orig_mid_rel)}" download>original.mid</a> · '
+    f'<a href="{html.escape(mod_mid_rel)}" download>modified.mid</a></p>')
+   if (orig_mid_rel and mod_mid_rel) else ''}
   <details class="toolcalls">
     <summary>tool_calls ({len(e.tool_calls)})</summary>
     <code>{tools_html}</code>
+  </details>
+  <details class="toolcalls">
+    <summary>pre / post instruments</summary>
+    <code>{html.escape(_format_instruments(e.pre_instruments))}
+{html.escape(_format_instruments(e.post_instruments, prefix='post'))}</code>
   </details>
 </section>
 """)
@@ -271,6 +304,10 @@ h1 { font-size: 28px; font-weight: 600; margin: 0 0 8px; letter-spacing: -0.01em
   text-transform: uppercase; letter-spacing: 0.08em;
 }
 audio { width: 100%; }
+.midi { font-size: 12px; color: var(--muted); margin: 10px 0 0; }
+.midi a { color: var(--accent); text-decoration: none; border-bottom: 1px dotted var(--accent); }
+.midi a:hover { opacity: 0.7; }
+.label-inline { text-transform: uppercase; letter-spacing: 0.08em; font-size: 11px; }
 .toolcalls { margin-top: 12px; font-size: 12px; }
 .toolcalls summary { cursor: pointer; color: var(--muted); }
 .toolcalls code {
@@ -329,7 +366,9 @@ def main():
     out_dir = Path(args.out_dir)
     work_dir = out_dir / "_work"
     audio_dir = out_dir / "audio"
+    midi_dir = out_dir / "midi"
     audio_dir.mkdir(parents=True, exist_ok=True)
+    midi_dir.mkdir(parents=True, exist_ok=True)
     work_dir.mkdir(parents=True, exist_ok=True)
 
     slakh_root = Path(args.slakh_root)
@@ -342,13 +381,24 @@ def main():
 
     rng = random.Random(args.seed)
     seeds = [rng.randint(0, 2**31 - 1) for _ in args.tracks]
+    # Coverage bias: guarantee one ``extract_track`` and one ``remix`` slot
+    # in the demo grid (these are the new intents and we want the demo
+    # page to showcase them); the rest stay uniform random over
+    # PRIMARY_INTENTS via _build_one's default branch.
+    forced_intents: list[str | None] = [None] * len(args.tracks)
+    if len(args.tracks) >= 2:
+        slots = list(range(len(args.tracks)))
+        rng.shuffle(slots)
+        forced_intents[slots[0]] = "extract_track"
+        forced_intents[slots[1]] = "remix"
+
     print(f"Generating {len(args.tracks)} demo cases…")
     t0 = time.time()
     results: dict[int, dict] = {}
     with ThreadPoolExecutor(max_workers=args.workers) as ex:
         futures = {
             ex.submit(_build_one, tid, slakh_root, s, client, sf_path,
-                      work_dir, args.duration): i
+                      work_dir, args.duration, forced_intents[i]): i
             for i, (tid, s) in enumerate(zip(args.tracks, seeds))
         }
         for fut in as_completed(futures):
@@ -389,6 +439,24 @@ def main():
         _wav_to_mp3(src_mod, out_mod)
         r["original_mp3_rel"] = f"audio/{out_orig.name}"
         r["modified_mp3_rel"] = f"audio/{out_mod.name}"
+
+        # Copy the MIDI sidecars (original.mid / modified.mid) into the
+        # published demo so the user can verify the content-branch supervision
+        # target. Filename convention parallels the MP3s.
+        src_orig_mid = work_dir / e.original_midi if e.original_midi else None
+        src_mod_mid = work_dir / e.modified_midi if e.modified_midi else None
+        if src_orig_mid and src_orig_mid.exists():
+            dst = midi_dir / f"case_{i+1:02d}_{r['track_id']}_original.mid"
+            shutil.copy2(src_orig_mid, dst)
+            r["original_midi_rel"] = f"midi/{dst.name}"
+        else:
+            r["original_midi_rel"] = ""
+        if src_mod_mid and src_mod_mid.exists():
+            dst = midi_dir / f"case_{i+1:02d}_{r['track_id']}_modified.mid"
+            shutil.copy2(src_mod_mid, dst)
+            r["modified_midi_rel"] = f"midi/{dst.name}"
+        else:
+            r["modified_midi_rel"] = ""
         cases.append(r)
 
     # Render HTML.
@@ -409,6 +477,10 @@ def main():
             "tool_calls": c["entry"].tool_calls,
             "original_mp3": c["original_mp3_rel"],
             "modified_mp3": c["modified_mp3_rel"],
+            "original_midi": c.get("original_midi_rel", ""),
+            "modified_midi": c.get("modified_midi_rel", ""),
+            "pre_instruments": c["entry"].pre_instruments,
+            "post_instruments": c["entry"].post_instruments,
             "attempt_count": c["entry"].attempt_count,
             "executed_ok": c["entry"].executed_ok,
         }

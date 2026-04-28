@@ -64,6 +64,19 @@ class DatasetEntry:
     primary_move_executed: bool
     attempt_count: int                   # 1 = first try succeeded; >1 = retried
     retry_reasons: list[str]             # reason per retry, length == attempt_count-1
+    # Structured instrument lists captured from MixtureState.tracks at the
+    # exact same moments as the mix snapshots in §3.10 of IMPLEMENTATION.md:
+    #   pre_instruments  = state.tracks BEFORE any tool_call executes.
+    #                      For arrangement_add the withheld target lives in
+    #                      state.pending_tracks at this point, so it is NOT
+    #                      in this list — that matches what original_audio
+    #                      actually contains.
+    #   post_instruments = state.tracks AFTER all tool_calls execute.
+    # Each entry: {name, program, is_drum, midi_program_name, inst_class}.
+    # Use these for [TMB] supervision; downstream code can dedupe by program
+    # if it wants set-level mixture labels.
+    pre_instruments: list[dict]
+    post_instruments: list[dict]
     temperature: float
     motivation: str
     think: str | None
@@ -84,6 +97,12 @@ class DatasetEntry:
     raw_response: str
     original_wav: str = ""
     modified_wav: str = ""
+    # MIDI sidecars written next to the WAVs. ``original.mid`` describes
+    # ``state.tracks`` BEFORE any tool_call executes (matches original_audio).
+    # ``modified.mid`` describes ``state.tracks`` AFTER all tool_calls execute
+    # (matches modified_audio). Used as the content-branch supervision target.
+    original_midi: str = ""
+    modified_midi: str = ""
 
     def to_json(self) -> dict:
         d = self.__dict__.copy()
@@ -96,6 +115,85 @@ def _safe_rms(x: np.ndarray) -> float:
     if x.size == 0:
         return 0.0
     return float(np.sqrt(np.mean(x.astype(np.float64) ** 2)))
+
+
+def _state_to_midi(state: MixtureState) -> "pretty_midi.PrettyMIDI":
+    """Bundle ``state.tracks`` into one multitrack ``PrettyMIDI``.
+
+    Used as the snapshot source for ``original.mid`` (pre-execution) and
+    ``modified.mid`` (post-execution). Each ``TrackState`` becomes a separate
+    ``Instrument`` track, with the ``TrackState.name`` carried into
+    ``Instrument.name`` so downstream tools can map a MIDI track back to the
+    audio stem / metadata record. Withheld tracks (``state.pending_tracks``)
+    are intentionally excluded from the *pre* snapshot so the file describes
+    what ``original_audio`` actually contains; ``add_track`` will move the
+    pending entry into ``state.tracks`` before the *post* snapshot.
+    """
+    import copy as _copy
+    import pretty_midi
+    pm = pretty_midi.PrettyMIDI()
+    for ts in state.tracks.values():
+        inst = _copy.deepcopy(ts.midi)
+        inst.is_drum = bool(ts.is_drum)
+        # ``change_instrument`` keeps ts.midi.program in sync, but layered /
+        # doubled / arrangement_add tracks may not — be defensive.
+        try:
+            inst.program = 0 if ts.is_drum else max(0, min(127, int(ts.program)))
+        except Exception:
+            inst.program = 0
+        inst.name = ts.name
+        pm.instruments.append(inst)
+    return pm
+
+
+def _capture_instruments(
+    state: MixtureState,
+    track,    # TrackMeta — kept untyped to avoid an import cycle with sources.slakh
+) -> list[dict]:
+    """Snapshot the active instrumentation in ``state.tracks``.
+
+    Returns one dict per active TrackState. Slakh metadata
+    (``midi_program_name``, ``inst_class``) is filled in for stems that map
+    back to a Slakh ``StemMeta`` via the dedup-name lookup. Synthetic
+    tracks introduced by ``layer_instrument`` (``<base>__layer<prog>``) or
+    ``double_track`` (``<base>__dbl``) don't have Slakh metadata; for those
+    we fall back to ``pretty_midi``'s GM program-name table.
+    """
+    import pretty_midi
+    from procraft_data.sources.slakh import _dedup_names
+
+    sid_by_name: dict[str, str] = {}
+    if track is not None and getattr(track, "stems", None):
+        names_by_sid = _dedup_names(list(track.stems.values()))
+        sid_by_name = {v: k for k, v in names_by_sid.items()}
+
+    out: list[dict] = []
+    for name, ts in state.tracks.items():
+        sid = sid_by_name.get(name)
+        stem = track.stems.get(sid) if (sid and track is not None) else None
+        if stem is not None:
+            midi_name = stem.midi_program_name
+            inst_class = stem.inst_class
+        else:
+            # Synthetic track (layer / double / new add) — derive name from GM.
+            if ts.is_drum:
+                midi_name = "Drum Kit"
+            else:
+                try:
+                    midi_name = pretty_midi.program_to_instrument_name(
+                        max(0, min(127, int(ts.program)))
+                    )
+                except Exception:
+                    midi_name = ""
+            inst_class = None
+        out.append({
+            "name": name,
+            "program": int(ts.program),
+            "is_drum": bool(ts.is_drum),
+            "midi_program_name": midi_name,
+            "inst_class": inst_class,
+        })
+    return out
 
 
 def _coerce_top_level_fx(tc: dict) -> dict:
@@ -237,17 +335,148 @@ def _track_audio(state: MixtureState, name: str | None) -> np.ndarray:
     return ts.audio
 
 
-def _result_is_valid(motivation: str, tool_calls: list[dict], primary_tool: str) -> tuple[bool, str]:
+def _result_is_valid(motivation: str, tool_calls: list[dict],
+                     spec: PromptSpec) -> tuple[bool, str]:
     """Return ``(valid, reason_if_not)`` for a freshly-generated response.
 
-    A valid response: has a non-empty motivation text AND emitted the
-    primary-move tool. Anything else is retryable.
+    Branching by spec:
+      * ``motivation_only`` (extract_track) — only require non-empty
+        motivation; tool_calls are ignored (and the pipeline overwrites
+        them with ``[]`` later).
+      * ``forced_calls`` non-empty (remix) — require every forced call to
+        appear in ``tool_calls`` matching name + key arguments.
+      * Otherwise — require non-empty motivation AND at least one
+        ``tool_calls`` entry matching ``spec.primary_tool``.
     """
     if not motivation.strip():
         return False, "empty motivation line"
-    if not any(tc.get("name") == primary_tool for tc in tool_calls):
-        return False, f"primary tool {primary_tool!r} missing from tool_calls"
+    if spec.motivation_only:
+        return True, ""
+    if spec.forced_calls:
+        for fc in spec.forced_calls:
+            if not _matches_forced_call(fc, tool_calls):
+                return False, f"forced call missing: {fc['name']} {fc['arguments']}"
+        return True, ""
+    if not any(tc.get("name") == spec.primary_tool for tc in tool_calls):
+        return False, f"primary tool {spec.primary_tool!r} missing from tool_calls"
     return True, ""
+
+
+def _finalize_extract_track(
+    *, track, spec: PromptSpec, tr: TraceResult, state: MixtureState,
+    snapshot_before: np.ndarray, pre_instruments: list[dict],
+    pre_midi: "any", input_metadata: str, attempt: int,
+    retry_reasons: list[str], entry_idx: int, out_dir: Path,
+    sample_rate: int,
+) -> "DatasetEntry":
+    """Build the DatasetEntry for an ``extract_track`` run.
+
+    The "modification" is purely deterministic: ``modified_audio`` is the
+    target stem rendered alone (the per-track audio captured during the
+    pre-LLM render pass). LLM tool_calls are ignored — the spec's
+    motivation-only prompt forbids them, but we strip any that leaked.
+    """
+    target_name = spec.target_track or ""
+    # Build the post-execution single-track view.
+    single_state = MixtureState(sample_rate=state.sample_rate)
+    if target_name in state.tracks:
+        single_state.tracks[target_name] = state.tracks[target_name]
+    post_instruments = _capture_instruments(single_state, track)
+    post_midi = _state_to_midi(single_state)
+
+    if target_name in state.tracks and state.tracks[target_name].audio is not None:
+        modified_mix = state.tracks[target_name].audio
+    else:
+        modified_mix = np.zeros_like(snapshot_before)
+
+    original_mix = snapshot_before
+    mix_rms_original = _safe_rms(original_mix)
+    mix_rms_modified = _safe_rms(modified_mix)
+
+    stem = f"entry_{track.track_id}_{spec.category_focus}_{entry_idx:02d}"
+    out_dir.mkdir(parents=True, exist_ok=True)
+    orig_path = out_dir / f"{stem}_original.wav"
+    mod_path = out_dir / f"{stem}_modified.wav"
+    orig_midi_path = out_dir / f"{stem}_original.mid"
+    mod_midi_path = out_dir / f"{stem}_modified.mid"
+    original_out, modified_out, _ = _shared_peak_normalize(original_mix, modified_mix)
+    sf.write(orig_path, original_out.T, sample_rate)
+    sf.write(mod_path, modified_out.T, sample_rate)
+    pre_midi.write(str(orig_midi_path))
+    post_midi.write(str(mod_midi_path))
+
+    cleaned_motivation = tr.motivation_text  # extract_track prompt has no
+    # internal-id leakage paths to worry about in practice; if the model
+    # writes an ID, it's the target_track which is also a valid English-y
+    # identifier in most Slakh tracks.
+
+    entry = DatasetEntry(
+        track_id=track.track_id,
+        source=f"slakh/{track.root.parent.name}",
+        mixture_metadata=input_metadata,
+        role=spec.role,
+        abstraction_level=spec.abstraction_level,
+        hook=spec.hook,
+        primary_intent=spec.primary_intent,
+        primary_tool=spec.primary_tool,
+        target_track=target_name,
+        target_program=None,
+        primary_move_executed=True,   # extract is performed by the pipeline
+        attempt_count=attempt,
+        retry_reasons=retry_reasons,
+        pre_instruments=pre_instruments,
+        post_instruments=post_instruments,
+        temperature=spec.temperature,
+        motivation=cleaned_motivation,
+        think=tr.reasoning_text,
+        tool_calls=[],   # the operation is not LLM-driven
+        executed_ok=bool(cleaned_motivation.strip()),
+        executed_errors=[],
+        tool_effects=[],
+        mix_rms_original=mix_rms_original,
+        mix_rms_modified=mix_rms_modified,
+        mix_rms_delta=abs(mix_rms_modified - mix_rms_original),
+        usage=tr.usage,
+        latency_sec=tr.latency_sec,
+        raw_response=tr.assistant_text,
+        original_wav=orig_path.name,
+        modified_wav=mod_path.name,
+        original_midi=orig_midi_path.name,
+        modified_midi=mod_midi_path.name,
+    )
+    (out_dir / f"{stem}.json").write_text(json.dumps(entry.to_json(), indent=2))
+    return entry
+
+
+def _matches_forced_call(forced: dict, tool_calls: list[dict]) -> bool:
+    """Check whether ``forced`` appears in ``tool_calls``.
+
+    Match policy by tool:
+      * ``remove_track``        → same ``track``.
+      * ``change_instrument``   → same ``track`` AND same ``to_program``.
+      * ``add_track``           → same ``track_name`` AND same ``program``.
+    Any extra key on the LLM call (e.g. ``gain_db`` defaulted) is OK.
+    """
+    fname = forced["name"]
+    fargs = forced["arguments"]
+    for tc in tool_calls:
+        if tc.get("name") != fname:
+            continue
+        a = tc.get("arguments", {}) or {}
+        if fname == "remove_track":
+            if a.get("track") == fargs["track"] or a.get("track_name") == fargs["track"]:
+                return True
+        elif fname == "change_instrument":
+            t_match = (a.get("track") == fargs["track"]
+                       or a.get("track_name") == fargs["track"])
+            if t_match and int(a.get("to_program", -1)) == int(fargs["to_program"]):
+                return True
+        elif fname == "add_track":
+            t_match = (a.get("track_name") == fargs["track_name"]
+                       or a.get("track") == fargs["track_name"])
+            if t_match and int(a.get("program", -1)) == int(fargs["program"]):
+                return True
+    return False
 
 
 def generate_one(
@@ -283,6 +512,18 @@ def generate_one(
     # added stem audibly changes the mix. Count notes INSIDE the 30s window
     # (not the whole-track note count) because a track with 500 total notes
     # might have only 3 in our window.
+    #
+    # Remix uses a sibling mechanism: the plan was committed at sample-time
+    # and named ⌊N/2⌋ tracks for the removed_set. Reuse the same withhold
+    # path so those tracks land in ``state.pending_tracks`` and surface as
+    # ``available_to_add`` in the metadata seen by the LLM.
+    if spec.primary_intent == "remix" and not withhold_for_add and spec.plan:
+        from procraft_data.pipeline.trace_prompts import thaw_plan
+        plan_dict = thaw_plan(spec.plan)
+        removed = list(plan_dict.get("removed_set", []))
+        if removed:
+            withhold_for_add = removed
+
     if spec.primary_intent == "arrangement_add" and not withhold_for_add:
         import random as _rnd
         import pretty_midi as _pm
@@ -329,6 +570,13 @@ def generate_one(
     # tool's effect. Copy because _mixdown returns a fresh array but we
     # want to be explicit.
     snapshot_before = _mixdown(state).copy() if state.tracks else np.zeros((2, 1), dtype=np.float32)
+    # Same snapshot moment, structured form: list of instruments actually
+    # present in original_audio. See DatasetEntry.pre_instruments docstring.
+    pre_instruments = _capture_instruments(state, track)
+    # Same snapshot moment, MIDI form: bundled multitrack PrettyMIDI describing
+    # the *content* (pitch + rhythm) underneath ``original_audio``. Used as the
+    # supervision target for the content branch (proposal §4.5 / §4.9).
+    pre_midi = _state_to_midi(state)
     # Capture pre-execution metadata — tool calls mutate state in place.
     input_metadata = describe_mixture(state, track)
 
@@ -336,17 +584,10 @@ def generate_one(
     # prompt agrees with the state the executors will see (especially for
     # arrangement_add, which depends on 'available_to_add' track names).
     # All role/abstraction/hook/intent fields are preserved verbatim.
-    from procraft_data.pipeline.trace_prompts import IntentCommitment
-    pinned_intent = IntentCommitment(
-        intent=spec.primary_intent,
-        primary_tool=spec.primary_tool,
-        target_track=spec.target_track,
-        target_program=spec.target_program,
-        description="",   # rebuilt inside build_spec via sample_primary_intent fallback
+    from procraft_data.pipeline.trace_prompts import (
+        IntentCommitment, make_remix_intent, sample_primary_intent,
     )
-    # For arrangement_add we want the description to name the actual withheld
-    # track; for other intents the previously-sampled description is fine.
-    from procraft_data.pipeline.trace_prompts import sample_primary_intent
+
     if spec.primary_intent == "arrangement_add" and withhold_for_add:
         pinned_intent = IntentCommitment(
             intent="arrangement_add",
@@ -357,6 +598,30 @@ def generate_one(
                 f"The main move is to bring back the withheld track "
                 f"'{withhold_for_add[0]}' using add_track. Your motivation "
                 f"should describe what it adds to the mixture."
+            ),
+        )
+    elif spec.primary_intent == "remix" and spec.plan:
+        # Reuse the original plan — re-sampling here would re-randomize
+        # the partition + decisions and discard the per-entry plan that's
+        # already baked into ``spec.forced_calls``.
+        pinned_intent = make_remix_intent(spec.plan)
+    elif spec.primary_intent == "extract_track":
+        # Preserve the sample-time target_track; the prompt's only
+        # metadata-dependent piece is the `tracks: ...` list at the top
+        # of the system block, which gets refreshed by build_spec below.
+        pinned_intent = IntentCommitment(
+            intent="extract_track",
+            primary_tool="extract_track_op",
+            target_track=spec.target_track,
+            target_program=None,
+            description=(
+                f"The producer is extracting '{spec.target_track}' from the "
+                f"full mix and presenting it in isolation. Your motivation "
+                f"should describe WHY soloing '{spec.target_track}' is "
+                f"useful — what the listener gains by hearing this stem "
+                f"alone (its line, groove, timbre, role in the "
+                f"arrangement). Do NOT propose any production changes; "
+                f"this turn is purely about isolating the existing track."
             ),
         )
     else:
@@ -400,11 +665,23 @@ def generate_one(
         tr.tool_calls = deduped
 
         valid, why = _result_is_valid(
-            tr.motivation_text, tr.tool_calls, spec.primary_tool
+            tr.motivation_text, tr.tool_calls, spec
         )
         if valid or attempt > max_retries:
             break
         retry_reasons.append(f"attempt {attempt}: {why}")
+
+    # ------------------------------------------------------------------
+    # extract_track short-circuit: deterministic stem solo, no executors
+    # ------------------------------------------------------------------
+    if spec.primary_intent == "extract_track":
+        return _finalize_extract_track(
+            track=track, spec=spec, tr=tr, state=state,
+            snapshot_before=snapshot_before, pre_instruments=pre_instruments,
+            pre_midi=pre_midi, input_metadata=input_metadata,
+            attempt=attempt, retry_reasons=retry_reasons,
+            entry_idx=entry_idx, out_dir=out_dir, sample_rate=sample_rate,
+        )
 
     errors: list[str] = []
     executed = 0
@@ -460,6 +737,8 @@ def generate_one(
     # §3.2 Category D pair: input=incomplete, output=complete.
     original_mix = snapshot_before
     modified_mix = _mixdown(state) if state.tracks else np.zeros_like(snapshot_before)
+    post_instruments = _capture_instruments(state, track)
+    post_midi = _state_to_midi(state)
     mix_rms_original = _safe_rms(original_mix)
     mix_rms_modified = _safe_rms(modified_mix)
 
@@ -467,22 +746,54 @@ def generate_one(
     out_dir.mkdir(parents=True, exist_ok=True)
     orig_path = out_dir / f"{stem}_original.wav"
     mod_path = out_dir / f"{stem}_modified.wav"
+    orig_midi_path = out_dir / f"{stem}_original.mid"
+    mod_midi_path = out_dir / f"{stem}_modified.mid"
     original_out, modified_out, _ = _shared_peak_normalize(original_mix, modified_mix)
     sf.write(orig_path, original_out.T, sample_rate)
     sf.write(mod_path, modified_out.T, sample_rate)
+    pre_midi.write(str(orig_midi_path))
+    post_midi.write(str(mod_midi_path))
 
-    primary_move_executed = any(
-        tc.get("name") == spec.primary_tool for tc in tr.tool_calls
-    )
+    if spec.forced_calls:
+        # Remix: the "primary move" is the union of forced calls.
+        primary_move_executed = all(
+            _matches_forced_call(fc, tr.tool_calls)
+            for fc in spec.forced_calls
+        )
+    else:
+        primary_move_executed = any(
+            tc.get("name") == spec.primary_tool for tc in tr.tool_calls
+        )
 
     # Final validity check — if retry loop gave up, mark executed_ok=False so
     # the downstream quality filter drops this entry.
     final_valid, final_why = _result_is_valid(
-        tr.motivation_text, tr.tool_calls, spec.primary_tool
+        tr.motivation_text, tr.tool_calls, spec
     )
     if not final_valid:
         errors.append(f"final-attempt invalid: {final_why}")
         executed_ok = False
+
+    # Remix-specific post-execution validator: enforce the "no kept-set
+    # original program survives in the modified mix" invariant. The forced
+    # calls are designed to satisfy this by construction (every kept-set
+    # track is dropped or swapped to a non-colliding program), but a
+    # secondary apply_fx call shouldn't be able to subvert it. If a
+    # kept-set program slipped through (e.g. an LLM-emitted layer_instrument
+    # with a kept-set program — which the prompt forbids), flag the entry
+    # rather than silently shipping it.
+    if spec.primary_intent == "remix" and spec.plan:
+        from procraft_data.pipeline.trace_prompts import thaw_plan
+        plan_dict = thaw_plan(spec.plan)
+        kept_programs = set(plan_dict.get("kept_programs", set()))
+        live_programs = {int(rec["program"]) for rec in post_instruments}
+        survived = kept_programs & live_programs
+        if survived:
+            errors.append(
+                f"remix-invariant violated: kept-set programs still in mix: "
+                f"{sorted(survived)}"
+            )
+            executed_ok = False
 
     # Post-process the motivation: swap any leaked internal track IDs for
     # their natural-name phrase. (The system prompt forbids leaks, but Qwen3
@@ -510,6 +821,8 @@ def generate_one(
         primary_move_executed=primary_move_executed,
         attempt_count=attempt,
         retry_reasons=retry_reasons,
+        pre_instruments=pre_instruments,
+        post_instruments=post_instruments,
         temperature=spec.temperature,
         motivation=cleaned_motivation,
         think=tr.reasoning_text,
@@ -525,6 +838,8 @@ def generate_one(
         raw_response=tr.assistant_text,
         original_wav=orig_path.name,
         modified_wav=mod_path.name,
+        original_midi=orig_midi_path.name,
+        modified_midi=mod_midi_path.name,
     )
     (out_dir / f"{stem}.json").write_text(json.dumps(entry.to_json(), indent=2))
     return entry

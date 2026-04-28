@@ -65,6 +65,10 @@ h1 { font-size: 28px; font-weight: 600; margin: 0 0 8px; letter-spacing: -0.01em
   text-transform: uppercase; letter-spacing: 0.08em;
 }
 audio { width: 100%; }
+.midi { font-size: 12px; color: var(--muted); margin: 10px 0 0; }
+.midi a { color: var(--accent); text-decoration: none; border-bottom: 1px dotted var(--accent); }
+.midi a:hover { opacity: 0.7; }
+.label-inline { text-transform: uppercase; letter-spacing: 0.08em; font-size: 11px; }
 .toolcalls { margin-top: 12px; font-size: 12px; }
 .toolcalls summary { cursor: pointer; color: var(--muted); }
 .toolcalls code {
@@ -95,11 +99,11 @@ footer {
   <header>
     <span class="idx">Case 01</span>
     <span class="track">Track00001</span>
-    <span class="intent">arrangement_add</span>
-    <span class="role">film_tv_music_supervisor</span>
+    <span class="intent">arrangement_remove</span>
+    <span class="role">session_keyboardist</span>
   </header>
-  <p class="motivation">Production motivation: The scene needs a visceral heartbeat that avoids synthetic drum-machine precision — no obvious digital artifacts, just the natural sway of live percussion to ground the emotional pull of the character&#x27;s final walk.</p>
-  <p class="hint">listen for → <code>added: drums (GM 11)</code></p>
+  <p class="motivation">Production motivation: The electric guitar&#x27;s artificial sheen clashes with the distortion guitars and makes the mix sound sterile—remove it to let the crunch guitars breathe without that overly clean, synthetic edge.</p>
+  <p class="hint">listen for → <code>removed: guitar_2</code></p>
   <div class="players">
     <div class="player">
       <div class="label">Original</div>
@@ -110,9 +114,15 @@ footer {
       <audio controls preload="none" src="audio/case_01_Track00001_modified.mp3"></audio>
     </div>
   </div>
+  <p class="midi"><span class="label-inline">MIDI:</span> <a href="midi/case_01_Track00001_original.mid" download>original.mid</a> · <a href="midi/case_01_Track00001_modified.mid" download>modified.mid</a></p>
   <details class="toolcalls">
-    <summary>tool_calls (6)</summary>
-    <code>add_track(drums, {&quot;program&quot;:11,&quot;gain_db&quot;:-3.0})<br>layer_instrument(guitar_3, {&quot;additional_program&quot;:27,&quot;mix_ratio&quot;:0.3})<br>apply_fx(bass, am_highpass_filter, {&quot;cutoff_freq&quot;:80.0,&quot;rolloff&quot;:12.0})<br>apply_fx(drums, sox_overdrive, {&quot;gain_db&quot;:8.0})<br>apply_fx(strings__continued, am_lowpass_filter, {&quot;cutoff_freq&quot;:3000.0,&quot;rolloff&quot;:18.0})<br>apply_fx(guitar_2, sox_treble, {&quot;gain_db&quot;:5.0,&quot;frequency&quot;:4000.0,&quot;slope&quot;:0.5})</code>
+    <summary>tool_calls (4)</summary>
+    <code>remove_track(guitar_2, {})<br>apply_fx(guitar_1, am_highpass_filter, {&quot;cutoff_freq&quot;:150.0,&quot;rolloff&quot;:12.0})<br>apply_fx(guitar_3, sox_overdrive, {&quot;gain_db&quot;:10.0})<br>apply_fx(strings__continued, am_high_shelf_filter, {&quot;center_freq&quot;:4000.0,&quot;gain_db&quot;:-2.0,&quot;q&quot;:0.7})</code>
+  </details>
+  <details class="toolcalls">
+    <summary>pre / post instruments</summary>
+    <code>pre : guitar_1 (Distortion Guitar), drums (Drums), piano (Bright Acoustic Piano), bass (Electric Bass (finger)), strings__continued (Choir Aahs), organ_1 (Percussive Organ), guitar_2 (Electric Guitar (jazz)), guitar_3 (Distortion Guitar), organ_2 (Harmonica), organ_3 (Harmonica)
+post: guitar_1 (Distortion Guitar), drums (Drums), piano (Bright Acoustic Piano), bass (Electric Bass (finger)), strings__continued (Choir Aahs), organ_1 (Percussive Organ), guitar_3 (Distortion Guitar), organ_2 (Harmonica), organ_3 (Harmonica)</code>
   </details>
 </section>
 
@@ -120,11 +130,11 @@ footer {
   <header>
     <span class="idx">Case 02</span>
     <span class="track">Track00002</span>
-    <span class="intent">arrangement_remove</span>
+    <span class="intent">arrangement_double</span>
     <span class="role">film_tv_music_supervisor</span>
   </header>
-  <p class="motivation">Production motivation: The mix feels like looking through a screen door at a party, where the choir aahs is smearing the clarity of the synth strings and lead.</p>
-  <p class="hint">listen for → <code>removed: strings__continued_2</code></p>
+  <p class="motivation">Production motivation: Like looking through a screen door at a party, the piano needs to feel present yet distant, so we&#x27;re thickening it with double track to fill the quiet moments without crowding the scene.</p>
+  <p class="hint">listen for → <code>doubled: piano</code></p>
   <div class="players">
     <div class="player">
       <div class="label">Original</div>
@@ -135,9 +145,15 @@ footer {
       <audio controls preload="none" src="audio/case_02_Track00002_modified.mp3"></audio>
     </div>
   </div>
+  <p class="midi"><span class="label-inline">MIDI:</span> <a href="midi/case_02_Track00002_original.mid" download>original.mid</a> · <a href="midi/case_02_Track00002_modified.mid" download>modified.mid</a></p>
   <details class="toolcalls">
-    <summary>tool_calls (6)</summary>
-    <code>remove_track(strings__continued_2, {})<br>apply_fx(strings__continued_1, am_highpass_filter, {&quot;cutoff_freq&quot;:150.0,&quot;rolloff&quot;:12.0})<br>apply_fx(synth_pad, am_high_shelf_filter, {&quot;center_freq&quot;:2500.0,&quot;gain_db&quot;:3.0,&quot;q&quot;:0.7})<br>apply_fx(synth_lead, am_tanh_distortion, {&quot;distortion&quot;:0.2})<br>apply_fx(drums, am_gain, {&quot;gain_db&quot;:1.5})<br>apply_fx(bass, am_lowpass_filter, {&quot;cutoff_freq&quot;:800.0,&quot;rolloff&quot;:12.0})</code>
+    <summary>tool_calls (5)</summary>
+    <code>double_track(piano, {&quot;offset_ms&quot;:15.0,&quot;detune_cents&quot;:10.0})<br>apply_fx(piano, sox_reverb, {&quot;reverberance&quot;:35.0,&quot;high_freq_damping&quot;:50.0,&quot;room_scale&quot;:70.0,&quot;stereo_depth&quot;:40.0,&quot;pre_delay&quot;:0.0,&quot;wet_gain&quot;:-6.0})<br>apply_fx(piano, am_highpass_filter, {&quot;cutoff_freq&quot;:200.0,&quot;rolloff&quot;:12.0})<br>apply_fx(synth_pad, am_gain, {&quot;gain_db&quot;:-3.0})<br>apply_fx(drums, am_tanh_distortion, {&quot;distortion&quot;:0.15})</code>
+  </details>
+  <details class="toolcalls">
+    <summary>pre / post instruments</summary>
+    <code>pre : strings__continued_1 (Synth Strings 1), bass (Electric Bass (pick)), synth_lead (Lead 2 (sawtooth)), synth_pad (Pad 1 (new age)), strings__continued_2 (Choir Aahs), chromatic_percussion (Music Box), piano (Clavinet), guitar (Electric Guitar (muted)), drums (Drums)
+post: strings__continued_1 (Synth Strings 1), bass (Electric Bass (pick)), synth_lead (Lead 2 (sawtooth)), synth_pad (Pad 1 (new age)), strings__continued_2 (Choir Aahs), chromatic_percussion (Music Box), piano (Clavinet), guitar (Electric Guitar (muted)), drums (Drums)</code>
   </details>
 </section>
 
@@ -145,11 +161,11 @@ footer {
   <header>
     <span class="idx">Case 03</span>
     <span class="track">Track00003</span>
-    <span class="intent">performance_velocity</span>
-    <span class="role">non_musician_client</span>
+    <span class="intent">remix</span>
+    <span class="role">producer</span>
   </header>
-  <p class="motivation">Production motivation: The acoustic guitar feels too rigid and wants to be the center of attention—smooth it out so no moment becomes &quot;the hook&quot;, even in the texture.</p>
-  <p class="hint">listen for → <code>velocity: guitar_1 × 0.7</code></p>
+  <p class="motivation">Production motivation: There&#x27;s an imbalance between the rhythm section and the lead voices—replacing the muddy electric bass and clashing overdriven guitar with drums and strings lets the harpsichord and clean guitar breathe like a late-&#x27;70s Steely Dan arrangement.</p>
+  <p class="hint">listen for → <code>remix: 2 drop / 2 swap / 2 add</code></p>
   <div class="players">
     <div class="player">
       <div class="label">Original</div>
@@ -160,9 +176,15 @@ footer {
       <audio controls preload="none" src="audio/case_03_Track00003_modified.mp3"></audio>
     </div>
   </div>
+  <p class="midi"><span class="label-inline">MIDI:</span> <a href="midi/case_03_Track00003_original.mid" download>original.mid</a> · <a href="midi/case_03_Track00003_modified.mid" download>modified.mid</a></p>
   <details class="toolcalls">
     <summary>tool_calls (7)</summary>
-    <code>change_velocity(guitar_1, {&quot;scale_factor&quot;:0.7})<br>apply_fx(guitar_1, sox_reverb, {&quot;reverberance&quot;:30.0,&quot;high_freq_damping&quot;:40.0,&quot;room_scale&quot;:50.0,&quot;stereo_depth&quot;:60.0,&quot;pre_delay&quot;:0.0,&quot;wet_gain&quot;:-8.0})<br>change_instrument(bass, {&quot;from_program&quot;:34,&quot;to_program&quot;:37})<br>layer_instrument(guitar_2, {&quot;additional_program&quot;:55,&quot;mix_ratio&quot;:0.6})<br>apply_fx(mix, npy_stereo_widener, {&quot;width&quot;:1.4})<br>apply_fx(drums, am_lowpass_filter, {&quot;cutoff_freq&quot;:1500.0,&quot;rolloff&quot;:12.0})<br>humanize_timing(guitar_1, {&quot;max_offset_ms&quot;:15.0})</code>
+    <code>remove_track(bass, {})<br>remove_track(guitar_2, {})<br>change_instrument(piano, {&quot;to_program&quot;:21})<br>change_instrument(guitar_3, {&quot;to_program&quot;:35})<br>add_track(drums, {&quot;program&quot;:0})<br>add_track(guitar_4, {&quot;program&quot;:27})<br>apply_fx(mix, sox_reverb, {&quot;reverberance&quot;:40.0,&quot;high_freq_damping&quot;:30.0,&quot;room_scale&quot;:60.0,&quot;stereo_depth&quot;:70.0,&quot;pre_delay&quot;:0.0,&quot;wet_gain&quot;:-4.0})</code>
+  </details>
+  <details class="toolcalls">
+    <summary>pre / post instruments</summary>
+    <code>pre : piano (Bright Acoustic Piano), bass (Electric Bass (pick)), guitar_2 (Overdriven Guitar), guitar_3 (Electric Guitar (jazz))
+post: piano (Bright Acoustic Piano), guitar_3 (Electric Guitar (jazz)), drums (Drums), guitar_4 (Electric Guitar (clean))</code>
   </details>
 </section>
 
@@ -170,11 +192,11 @@ footer {
   <header>
     <span class="idx">Case 04</span>
     <span class="track">Track00004</span>
-    <span class="intent">arrangement_add</span>
-    <span class="role">session_keyboardist</span>
+    <span class="intent">arrangement_remove</span>
+    <span class="role">mixing_engineer_self_note</span>
   </header>
-  <p class="motivation">Production motivation: The pad 3 needs to fill the warm low-mid space like Mr. Fingers&#x27; pads without clashing with the rock organ.</p>
-  <p class="hint">listen for → <code>added: synth_pad (GM 90)</code></p>
+  <p class="motivation">Production motivation: Removing the synth strings 1 eliminates midrange clutter that obscures the rock organ&#x27;s warmth, directly channeling Larry Heard&#x27;s Mr. Fingers — where every element breathes like a deep Chicago house groove.</p>
+  <p class="hint">listen for → <code>removed: strings__continued_2</code></p>
   <div class="players">
     <div class="player">
       <div class="label">Original</div>
@@ -185,9 +207,15 @@ footer {
       <audio controls preload="none" src="audio/case_04_Track00004_modified.mp3"></audio>
     </div>
   </div>
+  <p class="midi"><span class="label-inline">MIDI:</span> <a href="midi/case_04_Track00004_original.mid" download>original.mid</a> · <a href="midi/case_04_Track00004_modified.mid" download>modified.mid</a></p>
   <details class="toolcalls">
-    <summary>tool_calls (5)</summary>
-    <code>add_track(synth_pad, {&quot;program&quot;:90})<br>apply_fx(organ, am_highpass_filter, {&quot;cutoff_freq&quot;:300.0,&quot;rolloff&quot;:12.0})<br>apply_fx(synth_pad, sox_reverb, {&quot;reverberance&quot;:40.0,&quot;wet_gain&quot;:-6.0})<br>apply_fx(strings__continued_2, am_lowpass_filter, {&quot;cutoff_freq&quot;:3000.0,&quot;rolloff&quot;:12.0})<br>apply_fx(drums, sox_compand, {&quot;attack_time&quot;:0.005,&quot;decay_time&quot;:0.1,&quot;soft_knee_db&quot;:3.0})</code>
+    <summary>tool_calls (6)</summary>
+    <code>remove_track(strings__continued_2, {})<br>apply_fx(strings__continued_1, am_highpass_filter, {&quot;cutoff_freq&quot;:300.0,&quot;rolloff&quot;:12.0})<br>apply_fx(guitar, am_lowpass_filter, {&quot;cutoff_freq&quot;:2000.0,&quot;rolloff&quot;:12.0})<br>apply_fx(organ, am_high_shelf_filter, {&quot;center_freq&quot;:3000.0,&quot;gain_db&quot;:3.0,&quot;q&quot;:0.5})<br>apply_fx(mix, sox_reverb, {&quot;reverberance&quot;:35.0,&quot;wet_gain&quot;:-6.0})<br>apply_fx(mix, sox_overdrive, {&quot;gain_db&quot;:6.0})</code>
+  </details>
+  <details class="toolcalls">
+    <summary>pre / post instruments</summary>
+    <code>pre : synth_pad (Pad 3 (polysynth)), bass (Electric Bass (finger)), strings__continued_1 (Choir Aahs), organ (Rock Organ), guitar (Electric Guitar (muted)), strings__continued_2 (Synth Strings 1), piano_1 (Harpsichord), drums (Drums)
+post: synth_pad (Pad 3 (polysynth)), bass (Electric Bass (finger)), strings__continued_1 (Choir Aahs), organ (Rock Organ), guitar (Electric Guitar (muted)), piano_1 (Harpsichord), drums (Drums)</code>
   </details>
 </section>
 
@@ -198,8 +226,8 @@ footer {
     <span class="intent">effects</span>
     <span class="role">non_musician_client</span>
   </header>
-  <p class="motivation">Production motivation: It should sound like A Tribe Called Quest&#x27;s Low End Theory — loose drums, upright bass, and that warm jazz vibe you get when you&#x27;re in a smoke-filled room.</p>
-  <p class="hint">listen for → <code>fx: bass  sox_overdrive</code></p>
+  <p class="motivation">Production motivation: It&#x27;s not quite there yet—need that warm, loose groove like A Tribe Called Quest&#x27;s Low End Theory, where the drums swing and the bass feels like it&#x27;s in the room.</p>
+  <p class="hint">listen for → <code>fx: bass  am_low_shelf_filter</code></p>
   <div class="players">
     <div class="player">
       <div class="label">Original</div>
@@ -210,9 +238,15 @@ footer {
       <audio controls preload="none" src="audio/case_05_Track00005_modified.mp3"></audio>
     </div>
   </div>
+  <p class="midi"><span class="label-inline">MIDI:</span> <a href="midi/case_05_Track00005_original.mid" download>original.mid</a> · <a href="midi/case_05_Track00005_modified.mid" download>modified.mid</a></p>
   <details class="toolcalls">
-    <summary>tool_calls (7)</summary>
-    <code>apply_fx(bass, sox_overdrive, {&quot;gain_db&quot;:8,&quot;colour&quot;:0})<br>apply_fx(mix, sox_reverb, {&quot;reverberance&quot;:35,&quot;high_freq_damping&quot;:40,&quot;room_scale&quot;:50,&quot;stereo_depth&quot;:50,&quot;pre_delay&quot;:10,&quot;wet_gain&quot;:-6.0})<br>humanize_timing(drums, {&quot;max_offset_ms&quot;:15})<br>remove_track(strings__continued, {})<br>change_instrument(bass, {&quot;from_program&quot;:33,&quot;to_program&quot;:34})<br>apply_fx(piano_2, am_low_shelf_filter, {&quot;center_freq&quot;:100,&quot;gain_db&quot;:3,&quot;q&quot;:0.3})<br>apply_fx(mix, npy_stereo_widener, {&quot;width&quot;:1.2})</code>
+    <summary>tool_calls (5)</summary>
+    <code>apply_fx(bass, am_low_shelf_filter, {&quot;center_freq&quot;:250.0,&quot;gain_db&quot;:-3.0,&quot;q&quot;:0.7})<br>humanize_timing(drums, {&quot;max_offset_ms&quot;:15.0})<br>apply_fx(strings__continued, am_lowpass_filter, {&quot;cutoff_freq&quot;:4000.0,&quot;rolloff&quot;:12.0})<br>apply_fx(piano_2, am_highpass_filter, {&quot;cutoff_freq&quot;:300.0,&quot;rolloff&quot;:12.0})<br>apply_fx(mix, sox_reverb, {&quot;reverberance&quot;:35.0,&quot;wet_gain&quot;:-6.0})</code>
+  </details>
+  <details class="toolcalls">
+    <summary>pre / post instruments</summary>
+    <code>pre : drums (Drums), guitar_1 (Acoustic Guitar (steel)), piano_1 (Acoustic Grand Piano), bass (Electric Bass (finger)), chromatic_percussion (Glockenspiel), piano_2 (Electric Piano 2), pipe_2 (Flute), guitar_2 (Overdriven Guitar), pipe_3 (Pan Flute), strings__continued (Synth Strings 1), reed (Soprano Sax)
+post: drums (Drums), guitar_1 (Acoustic Guitar (steel)), piano_1 (Acoustic Grand Piano), bass (Electric Bass (finger)), chromatic_percussion (Glockenspiel), piano_2 (Electric Piano 2), pipe_2 (Flute), guitar_2 (Overdriven Guitar), pipe_3 (Pan Flute), strings__continued (Synth Strings 1), reed (Soprano Sax)</code>
   </details>
 </section>
 
@@ -220,11 +254,11 @@ footer {
   <header>
     <span class="idx">Case 06</span>
     <span class="track">Track00006</span>
-    <span class="intent">performance_timing</span>
-    <span class="role">mastering_engineer</span>
+    <span class="intent">extract_track</span>
+    <span class="role">mixing_engineer_self_note</span>
   </header>
-  <p class="motivation">Production motivation: Don&#x27;t let compression wash out the groove—add 20ms human timing to the first string ensemble 1 with subtle tanh distortion to prevent sterile platform translation.</p>
-  <p class="hint">listen for → <code>humanize: strings__continued_1  ±20.0 ms</code></p>
+  <p class="motivation">Production motivation: The alto sax cuts through the mix like a storm rolling in—electric and crackling, its smoky edges revealing the arrangement&#x27;s hidden tension.</p>
+  <p class="hint">listen for → <code>soloed: reed</code></p>
   <div class="players">
     <div class="player">
       <div class="label">Original</div>
@@ -235,9 +269,15 @@ footer {
       <audio controls preload="none" src="audio/case_06_Track00006_modified.mp3"></audio>
     </div>
   </div>
+  <p class="midi"><span class="label-inline">MIDI:</span> <a href="midi/case_06_Track00006_original.mid" download>original.mid</a> · <a href="midi/case_06_Track00006_modified.mid" download>modified.mid</a></p>
   <details class="toolcalls">
-    <summary>tool_calls (7)</summary>
-    <code>humanize_timing(strings__continued_1, {&quot;max_offset_ms&quot;:20.0})<br>apply_fx(strings__continued_1, am_tanh_distortion, {&quot;distortion&quot;:0.2})<br>apply_fx(strings__continued_1, am_highpass_filter, {&quot;cutoff_freq&quot;:150.0,&quot;rolloff&quot;:12.0})<br>apply_fx(bass, am_lowpass_filter, {&quot;cutoff_freq&quot;:300.0,&quot;rolloff&quot;:12.0})<br>apply_fx(piano, am_highpass_filter, {&quot;cutoff_freq&quot;:300.0,&quot;rolloff&quot;:12.0})<br>apply_fx(mix, sox_reverb, {&quot;reverberance&quot;:35.0,&quot;wet_gain&quot;:-6.0})<br>apply_fx(mix, am_gain, {&quot;gain_db&quot;:-1.0})</code>
+    <summary>tool_calls (0)</summary>
+    <code><em>none</em></code>
+  </details>
+  <details class="toolcalls">
+    <summary>pre / post instruments</summary>
+    <code>pre : drums (Drums), piano (Electric Piano 1), brass_1 (Trumpet), bass (Fretless Bass), strings__continued_1 (String Ensemble 1), strings__continued_2 (String Ensemble 1), brass_2 (French Horn), brass_3 (Trombone), reed (Alto Sax), guitar_2 (Electric Guitar (jazz)), guitar_3 (Overdriven Guitar), pipe (Flute)
+post: reed (Alto Sax)</code>
   </details>
 </section>
 
@@ -248,8 +288,8 @@ footer {
     <span class="intent">instrument_swap</span>
     <span class="role">mixing_engineer_self_note</span>
   </header>
-  <p class="motivation">Production motivation: Swapping the electric piano 1&#x27;s jangly brightness for Fretless Bass to achieve that dreamy and unhurried, half-asleep-in-a-moving-train texture.</p>
-  <p class="hint">listen for → <code>swapped: piano_2  GM 4 → 40</code></p>
+  <p class="motivation">Production motivation: The first bright acoustic piano is too sharp for the dreamy, unhurried, half-asleep-in-a-moving-train atmosphere—swapping it to the electric bass (GM33) adds warmth that deepens the transportive feeling.</p>
+  <p class="hint">listen for → <code>swapped: piano_1  GM ? → 33</code></p>
   <div class="players">
     <div class="player">
       <div class="label">Original</div>
@@ -260,9 +300,15 @@ footer {
       <audio controls preload="none" src="audio/case_07_Track00007_modified.mp3"></audio>
     </div>
   </div>
+  <p class="midi"><span class="label-inline">MIDI:</span> <a href="midi/case_07_Track00007_original.mid" download>original.mid</a> · <a href="midi/case_07_Track00007_modified.mid" download>modified.mid</a></p>
   <details class="toolcalls">
-    <summary>tool_calls (7)</summary>
-    <code>change_instrument(piano_2, {&quot;from_program&quot;:4,&quot;to_program&quot;:40})<br>apply_fx(mix, sox_reverb, {&quot;reverberance&quot;:25,&quot;wet_gain&quot;:-8.0})<br>apply_fx(piano_2, am_lowpass_filter, {&quot;cutoff_freq&quot;:2400.0,&quot;rolloff&quot;:12.0})<br>apply_fx(strings__continued, sox_chorus, {&quot;gain_in&quot;:0.7,&quot;gain_out&quot;:0.5,&quot;delay_ms&quot;:60.0,&quot;decay&quot;:0.3,&quot;speed&quot;:0.5,&quot;depth&quot;:2.0})<br>apply_fx(bass, am_gain, {&quot;gain_db&quot;:1.5})<br>humanize_timing(strings__continued, {&quot;max_offset_ms&quot;:15.0})<br>change_velocity(guitar_1, {&quot;scale_factor&quot;:0.95})</code>
+    <summary>tool_calls (5)</summary>
+    <code>change_instrument(piano_1, {&quot;to_program&quot;:33})<br>apply_fx(piano_1, sox_reverb, {&quot;reverberance&quot;:25.0,&quot;high_freq_damping&quot;:30.0,&quot;room_scale&quot;:50.0,&quot;stereo_depth&quot;:50.0,&quot;pre_delay&quot;:20.0,&quot;wet_gain&quot;:-6.0})<br>apply_fx(mix, am_lowpass_filter, {&quot;cutoff_freq&quot;:4000.0,&quot;rolloff&quot;:12.0})<br>humanize_timing(drums, {&quot;max_offset_ms&quot;:10.0})<br>layer_instrument(strings__continued, {&quot;additional_program&quot;:88,&quot;mix_ratio&quot;:0.5})</code>
+  </details>
+  <details class="toolcalls">
+    <summary>pre / post instruments</summary>
+    <code>pre : drums (Drums), piano_1 (Bright Acoustic Piano), bass (Electric Bass (finger)), piano_2 (Electric Piano 1), guitar_1 (Electric Guitar (clean)), strings__continued (Choir Aahs), guitar_2 (Electric Guitar (jazz)), piano_3 (Bright Acoustic Piano)
+post: drums (Drums), piano_1 (Bright Acoustic Piano), bass (Electric Bass (finger)), piano_2 (Electric Piano 1), guitar_1 (Electric Guitar (clean)), strings__continued (Choir Aahs), guitar_2 (Electric Guitar (jazz)), piano_3 (Bright Acoustic Piano)</code>
   </details>
 </section>
 
@@ -270,11 +316,11 @@ footer {
   <header>
     <span class="idx">Case 08</span>
     <span class="track">Track00008</span>
-    <span class="intent">arrangement_add</span>
+    <span class="intent">arrangement_remove</span>
     <span class="role">producer</span>
   </header>
-  <p class="motivation">Production motivation: That unadorned and simple, bread-and-butter drum foundation is the heartbeat this track’s been missing—raw, clean, and instantly groove-oriented like a classic hip-hop beat.</p>
-  <p class="hint">listen for → <code>added: drums (GM 0)</code></p>
+  <p class="motivation">Production motivation: Cutting the acoustic grand piano clears the muddiness so the electric piano 2 and fretless bass can breathe with unadorned and simple, bread and butter clarity.</p>
+  <p class="hint">listen for → <code>removed: piano_2</code></p>
   <div class="players">
     <div class="player">
       <div class="label">Original</div>
@@ -285,9 +331,15 @@ footer {
       <audio controls preload="none" src="audio/case_08_Track00008_modified.mp3"></audio>
     </div>
   </div>
+  <p class="midi"><span class="label-inline">MIDI:</span> <a href="midi/case_08_Track00008_original.mid" download>original.mid</a> · <a href="midi/case_08_Track00008_modified.mid" download>modified.mid</a></p>
   <details class="toolcalls">
-    <summary>tool_calls (4)</summary>
-    <code>add_track(drums, {&quot;program&quot;:0,&quot;gain_db&quot;:0.0})<br>apply_fx(drums, sox_overdrive, {&quot;gain_db&quot;:8.0})<br>apply_fx(piano_2, am_gain, {&quot;gain_db&quot;:-2.0})<br>apply_fx(strings__continued, am_lowpass_filter, {&quot;cutoff_freq&quot;:4000.0,&quot;rolloff&quot;:6.0})</code>
+    <summary>tool_calls (5)</summary>
+    <code>remove_track(piano_2, {})<br>apply_fx(piano_1, am_highpass_filter, {&quot;cutoff_freq&quot;:400.0})<br>apply_fx(strings__continued, am_lowpass_filter, {&quot;cutoff_freq&quot;:3000.0})<br>apply_fx(synth_pad, am_lowpass_filter, {&quot;cutoff_freq&quot;:2500.0})<br>apply_fx(drums, am_highpass_filter, {&quot;cutoff_freq&quot;:80.0})</code>
+  </details>
+  <details class="toolcalls">
+    <summary>pre / post instruments</summary>
+    <code>pre : bass (Fretless Bass), drums (Drums), piano_1 (Electric Piano 2), guitar (Electric Guitar (clean)), strings__continued (String Ensemble 2), piano_2 (Acoustic Grand Piano), synth_pad (Pad 4 (choir))
+post: bass (Fretless Bass), drums (Drums), piano_1 (Electric Piano 2), guitar (Electric Guitar (clean)), strings__continued (String Ensemble 2), synth_pad (Pad 4 (choir))</code>
   </details>
 </section>
 
@@ -295,11 +347,11 @@ footer {
   <header>
     <span class="idx">Case 09</span>
     <span class="track">Track00009</span>
-    <span class="intent">performance_articulation</span>
+    <span class="intent">arrangement_add</span>
     <span class="role">producer</span>
   </header>
-  <p class="motivation">Production motivation: Make the first music box sound like fireworks heard from indoors, with staccato notes to cut through the choir.</p>
-  <p class="hint">listen for → <code>articulation: chromatic_percussion_1 → staccato</code></p>
+  <p class="motivation">Production motivation: Layer the second choir aahs like fireworks heard from indoors, adding a hushed ambient glow without overpowering the bright piano and glockenspiel.</p>
+  <p class="hint">listen for → <code>added: strings__continued_3 (GM 52)</code></p>
   <div class="players">
     <div class="player">
       <div class="label">Original</div>
@@ -310,9 +362,15 @@ footer {
       <audio controls preload="none" src="audio/case_09_Track00009_modified.mp3"></audio>
     </div>
   </div>
+  <p class="midi"><span class="label-inline">MIDI:</span> <a href="midi/case_09_Track00009_original.mid" download>original.mid</a> · <a href="midi/case_09_Track00009_modified.mid" download>modified.mid</a></p>
   <details class="toolcalls">
     <summary>tool_calls (6)</summary>
-    <code>change_articulation(chromatic_percussion_1, {&quot;style&quot;:&quot;staccato&quot;})<br>remove_track(chromatic_percussion_3, {})<br>apply_fx(strings__continued_3, am_lowpass_filter, {&quot;cutoff_freq&quot;:4000,&quot;rolloff&quot;:6})<br>apply_fx(drums, am_highpass_filter, {&quot;cutoff_freq&quot;:100,&quot;rolloff&quot;:6})<br>change_instrument(guitar, {&quot;to_program&quot;:12})<br>apply_fx(piano, sox_overdrive, {&quot;gain_db&quot;:8})</code>
+    <code>add_track(strings__continued_3, {&quot;program&quot;:52,&quot;gain_db&quot;:0.0})<br>apply_fx(strings__continued_3, sox_reverb, {&quot;reverberance&quot;:25.0,&quot;high_freq_damping&quot;:30.0,&quot;room_scale&quot;:20.0,&quot;stereo_depth&quot;:30.0,&quot;pre_delay&quot;:5.0,&quot;wet_gain&quot;:-6.0})<br>change_instrument(guitar, {&quot;from_program&quot;:28,&quot;to_program&quot;:29})<br>apply_fx(strings__continued_3, am_lowpass_filter, {&quot;cutoff_freq&quot;:2000.0,&quot;rolloff&quot;:6.0})<br>apply_fx(strings__continued_3, npy_stereo_widener, {&quot;width&quot;:1.2})<br>apply_fx(mix, am_gain, {&quot;gain_db&quot;:1.0})</code>
+  </details>
+  <details class="toolcalls">
+    <summary>pre / post instruments</summary>
+    <code>pre : piano (Bright Acoustic Piano), chromatic_percussion_1 (Music Box), chromatic_percussion_2 (Glockenspiel), chromatic_percussion_3 (Music Box), strings__continued_1 (Choir Aahs), reed (Oboe), bass (Electric Bass (finger)), drums (Drums), guitar (Electric Guitar (muted))
+post: piano (Bright Acoustic Piano), chromatic_percussion_1 (Music Box), chromatic_percussion_2 (Glockenspiel), chromatic_percussion_3 (Music Box), strings__continued_1 (Choir Aahs), reed (Oboe), bass (Electric Bass (finger)), drums (Drums), guitar (Electric Guitar (muted)), strings__continued_3 (Choir Aahs)</code>
   </details>
 </section>
 
@@ -323,8 +381,8 @@ footer {
     <span class="intent">effects</span>
     <span class="role">session_drummer</span>
   </header>
-  <p class="motivation">Production motivation: Spring reverb emulation on drums, 700ms decay; apply sox_reverb (reverberance 30, high_freq_damping 70, room_scale 70, wet_gain -4dB) to create space without masking.</p>
-  <p class="hint">listen for → <code>fx: drums  sox_reverb</code></p>
+  <p class="motivation">Production motivation: The drums need more room; add spring reverb (65% reverberance, 700ms decay) to the acoustic guitar to create space without muddying the kick/snare.</p>
+  <p class="hint">listen for → <code>fx: guitar_1  sox_reverb</code></p>
   <div class="players">
     <div class="player">
       <div class="label">Original</div>
@@ -335,9 +393,15 @@ footer {
       <audio controls preload="none" src="audio/case_10_Track00010_modified.mp3"></audio>
     </div>
   </div>
+  <p class="midi"><span class="label-inline">MIDI:</span> <a href="midi/case_10_Track00010_original.mid" download>original.mid</a> · <a href="midi/case_10_Track00010_modified.mid" download>modified.mid</a></p>
   <details class="toolcalls">
-    <summary>tool_calls (7)</summary>
-    <code>apply_fx(drums, sox_reverb, {&quot;reverberance&quot;:30.0,&quot;high_freq_damping&quot;:70.0,&quot;room_scale&quot;:70.0,&quot;stereo_depth&quot;:50.0,&quot;pre_delay&quot;:20.0,&quot;wet_gain&quot;:-4.0})<br>apply_fx(guitar_1, am_highpass_filter, {&quot;cutoff_freq&quot;:300.0,&quot;rolloff&quot;:12.0})<br>apply_fx(synth_pad_2, am_lowpass_filter, {&quot;cutoff_freq&quot;:3000.0,&quot;rolloff&quot;:12.0})<br>apply_fx(drums, am_gain, {&quot;gain_db&quot;:1.0})<br>humanize_timing(drums, {&quot;max_offset_ms&quot;:10.0})<br>change_velocity(drums, {&quot;scale_factor&quot;:0.95})<br>layer_instrument(piano, {&quot;additional_program&quot;:17,&quot;mix_ratio&quot;:0.5})</code>
+    <summary>tool_calls (6)</summary>
+    <code>apply_fx(guitar_1, sox_reverb, {&quot;reverberance&quot;:65.0,&quot;high_freq_damping&quot;:55.0,&quot;room_scale&quot;:65.0,&quot;stereo_depth&quot;:75.0,&quot;wet_gain&quot;:-6.0})<br>apply_fx(drums, am_highpass_filter, {&quot;cutoff_freq&quot;:80.0,&quot;rolloff&quot;:12.0})<br>apply_fx(drums, am_gain, {&quot;gain_db&quot;:1.0})<br>apply_fx(guitar_1, npy_stereo_widener, {&quot;width&quot;:1.3})<br>apply_fx(piano, am_lowpass_filter, {&quot;cutoff_freq&quot;:3000.0,&quot;rolloff&quot;:12.0})<br>apply_fx(bass, am_bandstop_filter, {&quot;center_freq&quot;:250.0,&quot;bandwidth_fraction&quot;:1.2,&quot;rolloff&quot;:12.0})</code>
+  </details>
+  <details class="toolcalls">
+    <summary>pre / post instruments</summary>
+    <code>pre : bass (Electric Bass (finger)), guitar_1 (Acoustic Guitar (steel)), synth_pad_2 (Pad 7 (halo)), piano (Honky-tonk Piano), drums (Drums)
+post: bass (Electric Bass (finger)), guitar_1 (Acoustic Guitar (steel)), synth_pad_2 (Pad 7 (halo)), piano (Honky-tonk Piano), drums (Drums)</code>
   </details>
 </section>
 

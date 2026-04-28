@@ -1,11 +1,9 @@
-# ProCraft-Data Design Journal
+# ProCraft-Data Implementation
 
-**Purpose:** the single source of truth for the dataset-generation pipeline's
-workflow, methods, abandoned approaches, and experimental findings. Every
-time a method is implemented, replaced, or abandoned, this document is
-updated. This is the backbone reference for paper writing.
-
-**Last updated:** 2026-04-19 (iter 16 audit, RMS-match fix, methods 3 + 6 added).
+**Purpose:** the single source of truth for the *currently-implemented*
+ProCraft-Data pipeline — methods in use, file map, open items. Reference
+material for paper writing. Not a journal: do not add iteration logs,
+abandoned approaches, or "fixed in v17" notes.
 
 ---
 
@@ -19,7 +17,7 @@ the full language space of anyone who describes a production change — from a
 non-musician client's scene metaphor to a mixing engineer's parametric
 session note.
 
-Source: `prop_timbre_factorized_003.md` (proposal). This journal is
+Source: `prop_timbre_factorized_003.md` (proposal). This document is
 authoritative for *what is actually implemented*.
 
 ---
@@ -39,8 +37,9 @@ Qwen3-30B-A3B-Thinking (cpatonn/…-AWQ-4bit) on 3090 via vLLM
   ↓  parse <think>…</think>, motivation, <tool_call>…</tool_call> blocks
 Post-process: dedup, top-level-FX coercion, ID→natural-name, restorative rewrite
   ↓  executors.EXECUTORS[tool_name] mutate MixtureState
-  ↓  re-mixdown, shared peak-normalize, write WAV + JSON
-/nas/pro-craft/traces/smoke/Track00001/entry_*.{json,_original.wav,_modified.wav}
+  ↓  re-mixdown, shared peak-normalize, write WAV + MIDI + JSON
+/nas/pro-craft/traces/smoke/Track00001/entry_*.{json,
+  _original.wav,_modified.wav,_original.mid,_modified.mid}
 ```
 
 **Concurrency:** `ThreadPoolExecutor(max_workers=4)` in the smoke script;
@@ -64,19 +63,23 @@ continuous batching. Wall time for 10 entries ≈ 130–160 s.
   (REFERENCE_HOOKS = 167 · EMOTIONAL_HOOKS = 149 · SCENE_METAPHORS = 198 ·
   INSTRUMENT_SPECIFIC_HOOKS = 79 · TECHNICAL_HOOKS = 154 ·
   NEGATIVE_SPACE_HOOKS = 149 — total ≈ 900).
-- **primary_intent** (10): instrument_swap, instrument_layer, effects,
-  performance_{velocity,timing,articulation},
-  arrangement_{add,remove,double,mute_replace}. Uniformly sampled so every
-  run covers all 4 proposal categories evenly.
+- **primary_intent** (11): instrument_swap, instrument_layer, effects,
+  performance_{timing,articulation}, arrangement_{add,remove,double,mute_replace},
+  extract_track, remix. Uniformly sampled so every run covers all
+  categories evenly.
 
 ### 3.2 Pre-committed intent target
-For every non-`effects` intent, `sample_primary_intent` pre-selects a
+For most non-`effects` intents, `sample_primary_intent` pre-selects a
 `target_track` (and `target_program` for swaps / mute-replace). The prompt's
 "PRIMARY MOVE" block names it explicitly, so the motivation is guaranteed
 to refer to the executed action, and the executor is guaranteed to receive
 a compatible argument. For `arrangement_add`, `generate_one` withholds the
 chosen track from the MixtureState before rendering so the metadata
-advertises it as `available_to_add`.
+advertises it as `available_to_add`. `extract_track` pre-commits a
+`target_track` (any class — drums OK) but emits no tool_calls; the
+pipeline performs the stem solo deterministically (see §3.11). `remix`
+pre-commits a partition + per-track decisions in `IntentCommitment.plan`
+(see §3.12) instead of a single target.
 
 ### 3.3 Retry on empty motivation / missing primary tool
 `generate_one` wraps the LLM call in a bounded retry loop (default 3
@@ -150,7 +153,94 @@ produce independent takes. Coupled velocity jitter `1 + N(0, 0.08)` clipped
 to [0.6, 1.25] — timing + velocity co-vary the way real human performance
 does.
 
-### 3.10 Shared peak-normalize at output
+### 3.10 Per-entry artifacts (audio + MIDI + structured instrument lists)
+Every entry persists five files plus the JSON trace. The audio and the
+MIDI use the same two-snapshot semantics so original/modified pairs are
+mutually consistent across modalities.
+
+**Audio.** `original.wav` is captured with `snapshot_before =
+_mixdown(state).copy()` immediately *before* any tool_call executes.
+`modified.wav` is captured with `_mixdown(state)` *after* every tool_call
+executes. Both are 48 kHz stereo 30 s clips. For `arrangement_add` the
+withheld target lives in `state.pending_tracks` at the *before* moment, so
+`original.wav` is the incomplete mix the proposal §3.2 Category D requires
+as input; the executor moves the pending entry into `state.tracks` before
+the *after* moment, so `modified.wav` is the complete mix.
+
+**MIDI.** `original.mid` and `modified.mid` are written via
+`_state_to_midi(state)` at the same two moments. Each `TrackState` becomes
+a separate `Instrument` (with `name` set to the track identifier so MIDI
+tracks can be matched back to their audio stem and metadata record).
+These are the supervision target for the content branch (proposal §4.5 /
+§4.9 — pianoroll predictor under the 8-dim content bottleneck). Content
+operations (`arrangement_add`, `arrangement_remove`, `arrangement_double`,
+`mute_replace`) change the modified MIDI in addition to changing the
+audio; non-content operations (`effects`, `instrument_swap`,
+`instrument_layer`, `performance_*`) leave the modified MIDI structurally
+identical to the original except for any executor-driven mutations
+(velocity / timing / articulation / program number).
+
+**Structured instrument lists.** `_capture_instruments(state, track)` is
+called at the same two moments and produces `pre_instruments` /
+`post_instruments` on the JSON trace. Each record is `{name, program,
+is_drum, midi_program_name, inst_class}`. Slakh metadata is filled in for
+stems that map back to a `StemMeta`; synthetic tracks introduced by
+`layer_instrument` (`<base>__layer<prog>`) or `double_track` (`<base>__dbl`)
+fall back to `pretty_midi.program_to_instrument_name`. These lists are
+the source for [TMB] supervision labels — downstream code can dedupe by
+program if it wants set-level mixture labels.
+
+### 3.11 extract_track — deterministic stem solo
+This intent does not call any tool. `sample_primary_intent` picks one
+track (any class), and the LLM is given a tool-free system prompt
+(`build_motivation_only_system_prompt` — no `<tools>` block, no
+"emit tool_calls" instructions) and asked only for the motivation
+sentence. `generate_one` short-circuits at `_finalize_extract_track`:
+`original_audio` is the full mix; `modified_audio` is the target
+track's per-stem audio rendered alone; `pre_instruments` is the full
+mixture; `post_instruments` is `[the one extracted track]`;
+`tool_calls = []`. This produces a clean
+`(full_mix, motivation, single_stem)` triple useful for stem-isolation
+training.
+
+### 3.12 remix — kept-set drop/swap + add-back from removed-set
+`_plan_remix` runs at sample time on the FULL mix metadata:
+
+1. Skip when `N < 4` (fall back to `effects`).
+2. Partition: `removed_set` (size `K = ⌊N/2⌋`) and `kept_set` (rest).
+3. Per kept-set track, randomly pick "drop" or "swap" (50/50), with two
+   guarantees: (a) drum kits always drop — `change_instrument` keeps
+   `is_drum=True` and a melodic GM program on channel 10 produces
+   nonsense; (b) the entry has at least one drop AND at least one swap
+   (forced by flipping a non-drum track if either action is missing).
+4. Swap target programs are sampled in [0, 95] excluding the kept-set's
+   original programs (collision with removed-set programs is OK; that's
+   the C-γ contract).
+5. Add-back picks: ⌈K/2⌉ from `removed_set`. Add-back program defaults to
+   the track's original program except (a) drum tracks report the
+   schema-valid placeholder `program=0` (drum routing is controlled by
+   `is_drum`, not `program`); (b) if the original program collides with
+   `kept_programs`, a fresh non-colliding program is sampled.
+
+The plan is stashed on `IntentCommitment.plan` (frozen tuple form) and
+the resolved tool_calls are stashed on `IntentCommitment.forced_calls`.
+`generate_one` reads `spec.plan["removed_set"]` to pick the withhold list
+*before* rendering — `original_audio` therefore renders the kept set
+only, and the removed set surfaces in the metadata's `available_to_add`
+section.
+
+The system prompt's PRIMARY MOVE block lists every forced call
+verbatim; the LLM is told to emit each verbatim plus enough free
+`apply_fx` calls to reach `chosen_count = max(sampled_count, n_forced + 1)`.
+`_result_is_valid(spec)` — used in the retry loop — accepts the response
+only when every forced call is matched by a tool_call (matching policy in
+`_matches_forced_call`: name + key arguments). Post-execution, an
+additional invariant check ensures no kept-set original program survives
+in `post_instruments`; violations append to `executed_errors` and flip
+`executed_ok=False` (no retry — the prompt's structure guarantees
+satisfaction in the happy path).
+
+### 3.13 Shared peak-normalize at output
 `_shared_peak_normalize(original, modified, target=0.95)` computes one
 scale factor from `max(|original|, |modified|)`; applies to both.
 Preserves the relative loudness delta between the pair while preventing
@@ -160,46 +250,7 @@ targets are NOT honored — simplification).
 
 ---
 
-## 4. Abandoned approaches
-
-| # | What | Why abandoned |
-|---|---|---|
-| 1 | `--enable-auto-tool-choice` on vLLM | We don't pass `tools=[]` in the OpenAI request (tools are baked into the system prompt text). Flag only works when request has tools. Removed in iter 5. |
-| 2 | `--reasoning-parser qwen3` | vLLM 0.19's qwen3 parser silently drops `<think>` content for this AWQ build (completion_tokens reports tokens, reasoning_content comes back empty). Removed; we now parse `<think>…</think>` from raw content. |
-| 3 | `--enforce-eager` on vLLM | Disabled CUDA graph capture to bypass a startup hang. Turned out the hang was transient; dropping `--enforce-eager` gave ~1.3× decode throughput. Removed in iter 5. |
-| 4 | Sequential client requests | Single-request batch-size = 1 underuses the 3090's MoE lanes. Replaced with `ThreadPoolExecutor(4)` + `--max-num-seqs 6`; 6.7× speedup. |
-| 5 | Fixed-seed humanization | Same `random.Random(0xC0FFEE)` each call meant repeated humanize_timing calls produced byte-identical audio (Δrms = 0). Replaced with time-based seed. |
-| 6 | Peak-matching for distortion | Peak-match preserves peak but distortion flattens waveforms, so RMS went 3–5× higher post-compensation — i.e., the "character change" still sounded much louder. Replaced with RMS-matching in iter 16. |
-| 7 | Per-category "primary_focus" hint (earlier) | Was a soft hint that the LLM mostly ignored, producing single-category biased outputs. Replaced with explicit "PRIMARY MOVE" block + pre-committed target. |
-| 8 | Random pre-withhold for arrangement_add | Old policy withheld random track regardless of intent → silent mismatches when model didn't emit add_track. Now only withholds when `primary_intent == arrangement_add`. |
-| 9 | Partial sub-bus support | Briefly removed the `track="mix"` option. User asked to restore it — mix bus is correct, partial/group sub-buses (like a "guitars bus") are the thing to avoid. |
-
----
-
-## 5. Iteration log (chronological, compressed)
-
-| Iter | Wall | Focus | Outcome |
-|---|---|---|---|
-| 3 | ~20 min serial | Role × abstraction first run | 13/13 roles distinct voices; 1 top-level-fx-as-tool-name bug |
-| 5 | ~25 min | 4 bugs: Q/q, dedup, motivation-target-mismatch, restorative framing | 4/5 fixed; one top-level fx name emerged |
-| 7 | 223 s (4-worker) | Concurrency + CUDA graphs | 6.7× speedup, clean 13/13 |
-| 8 | 124 s | Intent-guided primary-move, 10 intents | 10/10 primary executed, 1 missing Δmix |
-| 9–10 | 140–220 s | case-insensitive param coercion, `track`/`track_name` aliasing | 10/10 exec, 10/10 target in motivation |
-| 11 | 155 s | Stronger cookbook, wider tool count, natural-name table | Multi-category moves work; some ID leaks + restoration words remain |
-| 12–13 | 150 s | Post-process `_clean_motivation` | IDs scrubbed deterministically, but overzealous on "piano"/"bass" created doubled noun phrases |
-| 14 | 135 s | Skip English-word identifiers in cleaner | Doubled-phrase bug gone; one residual "missing" in arrangement_add |
-| 15 | 131 s | `_rewrite_restoration_words` for arrangement_add | 0 audit issues; ready for listening |
-| 16 | 143 s | RMS-match distortion (peak-match was wrong); vocab pools 5-10× | Distortion RMS-match verified in iter 17 |
-| 17 | 153 s | Methods 3 + 6 (role-aware hook filter + conflict resample); empty-motivation flag | 0 audit issues; distortion ratios all 1.000; 1/10 entries had model skip the motivation line → flagged as invalid |
-| 18 | 143 s | Bounded-retry on empty motivation / missing primary tool | 10/10 valid, `attempt_count` recorded per entry |
-| demo | 181 s | 10 tracks × random intent, MP3 transcode, static HTML at `docs/` | Pushed commit `34e6a34`; GitHub Pages-ready |
-| fix | — | User noted `sox_overdrive` cookbook default 20–35 dB was too heavy | Cookbook reworked: EFFECT STRENGTH table now has explicit light / medium / strong ranges per effect, keyed to motivation vocabulary ("subtle" → light, "driven" → medium, "aggressive" → strong) |
-| fix | — | `arrangement_add` case 08 played drums in BOTH original AND modified — broken semantic | Was computing `original_mix` with a fresh non-withheld state, so both sides had the "added" stem. Switched to snapshot-before-exec: `original_mix = _mixdown(state).copy()` captured right after stem render but before tool_calls execute. For arrangement_add the state has the target withheld → snapshot is the incomplete mix (proposal §3.2 Category D: input=incomplete, output=complete). For every other intent it's the unmodified full mix as before. Also removed the redundant `_compute_original_mix` helper (double-render waste). |
-| soundfonts | — | FluidR3-only renders sound robotic | Catalogued 50 redistributable GM SF2 soundfonts (Tier A/B/C by license). Downloaded 13 (FluidR3, GeneralUser GS, MuseScore_General, Jnsgm2, Unison, Arachno, MagicSF, OPL3-FM, SGM v2.01, airfont_380, Musyng-Kite, TimGM6mb, default-GM) to `/nas/pro-craft/soundfonts/`. Built comparison page at `docs/soundfonts/index.html` — same Slakh track rendered through each soundfont, A/B players inline. Pending: Timbres of Heaven (only sfpk/SF3-Vorbis mirror available, needs Polyphone CLI to convert); Realistic Libre + Chorium Albatwo MOD (artifact URLs 404). |
-
----
-
-## 6. Open items / next
+## 4. Open items / next
 
 - Implement DAC tokenization + the factorized codec model (ProCraft-Model,
   proposal §4). Pipeline for this doesn't exist yet; data side is where
@@ -212,7 +263,7 @@ targets are NOT honored — simplification).
 
 ---
 
-## 7. File map
+## 5. File map
 
 | File | Role |
 |---|---|
@@ -228,4 +279,5 @@ targets are NOT honored — simplification).
 | `procraft_data/pipeline/generate_traces.py` | Per-entry orchestration; post-process cleaners |
 | `scripts/serve_qwen3.sh` | vLLM launch (3090, 32K ctx, `max-num-seqs 6`) |
 | `scripts/smoke_qwen_all_motivations.py` | 4-worker smoke run covering all 10 intents |
+| `scripts/build_demo.py` | 10-case demo page with MP3 audio + MIDI download links |
 | `tests/test_*.py` | Regression tests (14 currently passing) |

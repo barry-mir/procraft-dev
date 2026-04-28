@@ -6,7 +6,7 @@ hallucinatable parameters. The four categories mirror proposal §3.2:
 
     A. change_instrument, layer_instrument          (re-rendering)
     B. apply_fx                                     (MultiAFX, 85 effects)
-    C. change_velocity, humanize_timing, change_articulation  (performance)
+    C. humanize_timing, change_articulation                    (performance)
     D. add_track, remove_track, double_track, mute_and_replace  (arrangement)
 
 apply_fx is the only "polymorphic" tool: it takes an ``effect`` enum and a
@@ -152,25 +152,6 @@ def apply_fx_schema() -> dict[str, Any]:
 # ---------------------------------------------------------------------------
 # Category C — performance modifications (MIDI-level)
 # ---------------------------------------------------------------------------
-def change_velocity_schema() -> dict[str, Any]:
-    return {
-        "type": "function",
-        "function": {
-            "name": "change_velocity",
-            "description": "Multiply every note's MIDI velocity on the named track by scale_factor.",
-            "parameters": {
-                "type": "object",
-                "properties": {
-                    "track": {"type": "string"},
-                    "scale_factor": {"type": "number", "minimum": 0.25, "maximum": 2.0},
-                },
-                "required": ["track", "scale_factor"],
-                "additionalProperties": False,
-            },
-        },
-    }
-
-
 def humanize_timing_schema() -> dict[str, Any]:
     return {
         "type": "function",
@@ -298,7 +279,6 @@ def all_tool_schemas() -> list[dict[str, Any]]:
         change_instrument_schema(),
         layer_instrument_schema(),
         apply_fx_schema(),
-        change_velocity_schema(),
         humanize_timing_schema(),
         change_articulation_schema(),
         add_track_schema(),
@@ -334,5 +314,32 @@ def build_hermes_system_prompt(track_metadata: str) -> str:
     return (
         f"{HERMES_SYSTEM_PREAMBLE}\n\n"
         f"<tools>{tools_json}</tools>\n\n"
+        f"Mixture metadata: {track_metadata}"
+    )
+
+
+MOTIVATION_ONLY_PREAMBLE = (
+    "You are a professional music producer narrating ONE production move "
+    "per turn. The mixtures are INSTRUMENTAL multitracks rendered from MIDI; "
+    "they never contain vocals, rap, or any voice. This turn does not "
+    "require any tool calls — the operation is performed deterministically "
+    "by the pipeline. You only need to: first reason inside "
+    "<think>...</think> about WHY the producer is making this move (write "
+    "specifically about the tracks listed under 'Mixture metadata'); then "
+    "outside the think block, write exactly ONE line beginning with "
+    "'Production motivation: ' followed by a natural-language sentence in "
+    "the role's voice. Do NOT emit any <tool_call> blocks."
+)
+
+
+def build_motivation_only_system_prompt(track_metadata: str) -> str:
+    """System prompt for motivation-only intents (e.g. ``extract_track``).
+
+    Drops the ``<tools>`` block and the tool-call instructions; the model
+    only needs to reason about the production move and write a motivation
+    sentence. The pipeline performs the audio operation deterministically.
+    """
+    return (
+        f"{MOTIVATION_ONLY_PREAMBLE}\n\n"
         f"Mixture metadata: {track_metadata}"
     )

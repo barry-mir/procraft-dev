@@ -8,9 +8,12 @@ from procraft_data.pipeline.trace_prompts import (
 )
 
 
-EXAMPLE_META = ("tracks: piano (GM program 1), drums (drums), bass (GM program 33); "
-                "available_to_add: strings (GM program 48, withheld); "
-                "source: slakh/Track00001")
+EXAMPLE_META = (
+    "tracks: piano \"Acoustic Grand Piano\" (GM 0), drums \"Drum Kit\", "
+    "bass \"Electric Bass (finger)\" (GM 33), strings \"String Ensemble 1\" (GM 48), "
+    "guitar_1 \"Distortion Guitar\" (GM 30); "
+    "source: slakh/Track00001"
+)
 
 
 def test_roles_and_levels_defined():
@@ -75,6 +78,12 @@ def test_sample_primary_intent_pre_commits_target_where_expected():
         if intent_name in {"effects", "arrangement_add"}:
             # effects is free-choice; arrangement_add target is decided by the
             # pipeline at withhold time, not by sample_primary_intent.
+            continue
+        if intent_name == "remix":
+            # remix pre-commits via ``forced_calls`` + ``plan`` (a partition
+            # plus per-track decisions), not via a single ``target_track``.
+            assert ic.forced_calls, "remix must pre-commit forced_calls"
+            assert ic.plan, "remix must pre-commit a plan"
             continue
         assert ic.target_track is not None, f"{intent_name} must pre-commit a target"
 

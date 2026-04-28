@@ -429,13 +429,14 @@ PRIMARY_INTENTS = [
     "instrument_swap",            # category A
     "instrument_layer",           # category A
     "effects",                    # category B (free choice of 1-3 apply_fx)
-    "performance_velocity",       # category C
     "performance_timing",         # category C
     "performance_articulation",   # category C
     "arrangement_add",            # category D
     "arrangement_remove",         # category D
     "arrangement_double",         # category D
     "arrangement_mute_replace",   # category D
+    "extract_track",              # category E — solo a single stem (deterministic, motivation-only)
+    "remix",                      # category E — kept-set drop/swap + add-back from removed-set
 ]
 
 # Legacy — kept only for test back-compat.
@@ -454,26 +455,49 @@ class IntentCommitment:
     ``arrangement_add`` needs a withheld track; ``arrangement_remove`` prefers
     a redundant instrument). For other intents the target is free for the LLM
     to pick from the mixture.
+
+    ``forced_calls`` carries pre-committed tool_calls (used by ``remix``) that
+    the LLM is required to emit verbatim alongside any free secondary calls.
+    Empty for intents that pre-commit only one move via ``primary_tool`` /
+    ``target_track``.
+
+    ``plan`` carries non-prompt metadata for downstream stages — e.g. for
+    ``remix``, the kept-set / removed-set partition + the per-track
+    drop-or-swap decisions, used by the validator. Empty otherwise.
     """
     intent: str
-    primary_tool: str               # one of the 10 registered tools
+    primary_tool: str               # canonical tool, or sentinel for motivation-only intents
     target_track: str | None        # pre-committed when applicable
     target_program: int | None      # for instrument_swap / mute_replace
     description: str                # human-readable one-liner for the prompt
+    forced_calls: tuple = ()        # tuple[dict, ...] — frozen-friendly default
+    plan: tuple = ()                # tuple of (key, value) pairs — frozen-friendly dict
 
 
+# Two intents are not backed by a registered executor tool: ``extract_track``
+# is a deterministic stem solo (no LLM tool_calls) and ``remix`` is a
+# multi-tool composite where the primary "move" is the union of forced_calls.
+# Sentinel names below carry intent identity through PromptSpec without
+# pretending a real tool exists.
 _INTENT_TOOL: dict[str, str] = {
     "instrument_swap":            "change_instrument",
     "instrument_layer":           "layer_instrument",
     "effects":                    "apply_fx",
-    "performance_velocity":       "change_velocity",
     "performance_timing":         "humanize_timing",
     "performance_articulation":   "change_articulation",
     "arrangement_add":            "add_track",
     "arrangement_remove":         "remove_track",
     "arrangement_double":         "double_track",
     "arrangement_mute_replace":   "mute_and_replace",
+    "extract_track":              "extract_track_op",
+    "remix":                      "remix_op",
 }
+
+
+# Intents that don't go through the LLM tool-call path. For these,
+# generate_one builds the audio + MIDI deterministically; the LLM only
+# generates the motivation sentence and gets a tool-free system prompt.
+MOTIVATION_ONLY_INTENTS: frozenset[str] = frozenset({"extract_track"})
 
 
 # ---------------------------------------------------------------------------
@@ -487,7 +511,7 @@ class PromptSpec:
     abstraction_level: str
     hook: str
     primary_intent: str              # one of PRIMARY_INTENTS
-    primary_tool: str                # canonical tool name to use
+    primary_tool: str                # canonical tool name (or sentinel for motivation-only)
     target_track: str | None         # pre-committed target (may be None)
     target_program: int | None       # pre-committed new GM program (may be None)
     category_focus: str              # "free" (back-compat for legacy tests)
@@ -496,6 +520,9 @@ class PromptSpec:
     max_tokens: int = 6144
     tool_count_hint: tuple[int, int] = (4, 7)
     withhold_for_add: list[str] = field(default_factory=list)   # filled for arrangement_add
+    forced_calls: list[dict] = field(default_factory=list)      # filled for remix
+    plan: dict = field(default_factory=dict)                    # remix bookkeeping
+    motivation_only: bool = False    # True for extract_track — no <tools> block
 
     def as_messages(self) -> list[dict]:
         return [
@@ -631,6 +658,236 @@ def _random_gm_program(rng: random.Random) -> int:
     return rng.randint(0, 95)
 
 
+def _parse_track_records(metadata: str) -> list[dict]:
+    """Parse ``tracks: ...`` into ``[{name, program, is_drum}]`` records.
+
+    For drum tracks the metadata writes ``"Drum Kit"`` with no GM number;
+    we report ``program=128`` (the Slakh sentinel) and ``is_drum=True``.
+    """
+    import re
+    out: list[dict] = []
+    for name, tag in _parse_present_tracks(metadata):
+        if "drum" in tag.lower():
+            out.append({"name": name, "program": 128, "is_drum": True})
+            continue
+        m = re.search(r"\bGM\s+(\d+)", tag)
+        prog = int(m.group(1)) if m else 0
+        out.append({"name": name, "program": prog, "is_drum": False})
+    return out
+
+
+def _plan_remix(track_metadata: str, rng: random.Random) -> dict | None:
+    """Plan a remix entry — partition + per-track decisions + add-backs.
+
+    Returns ``None`` when the mixture is too small (N < 4) so the caller
+    can fall back to a different intent. Otherwise the dict has::
+
+        {
+          "removed_set":  list[str],       # track names withheld → pending_tracks
+          "kept_set":     list[str],       # the "input mix" the LLM sees
+          "kept_programs": set[int],       # original programs of kept_set (forbidden zone)
+          "decisions":    list[(name, "drop"|"swap", new_prog_or_None)],
+          "add_backs":    list[(name, prog)],   # name from removed_set, prog ∉ kept_programs
+        }
+
+    Per the locked spec:
+      * K = ⌊N/2⌋, kept = N - K (≥ 2 because N ≥ 4).
+      * For each kept-set track: 50/50 drop or swap, with a hard guarantee
+        that the entry has at least one drop AND at least one swap.
+      * Swap target program ∉ kept_programs (collision with removed_set is OK).
+      * ⌈K/2⌉ removed-set tracks are added back; their program is the
+        track's original unless that program collides with kept_programs,
+        in which case we pick a fresh non-colliding program (per C-γ).
+    """
+    records = _parse_track_records(track_metadata)
+    n = len(records)
+    if n < 4:
+        return None
+
+    k = n // 2
+    shuffled = records[:]
+    rng.shuffle(shuffled)
+    removed = shuffled[:k]
+    kept = shuffled[k:]
+    kept_programs: set[int] = {r["program"] for r in kept}
+
+    # Drop-or-swap decisions per kept-set track. Drum tracks always drop —
+    # ``change_instrument`` on a drum stem keeps ``is_drum=True`` so a swap
+    # to a melodic GM program would still render through channel 10 and
+    # produce nonsense.
+    decisions: list[tuple[str, str, int | None]] = []
+    for r in kept:
+        if r["is_drum"]:
+            action = "drop"
+        else:
+            action = "drop" if rng.random() < 0.5 else "swap"
+        decisions.append((r["name"], action, None))
+
+    # Enforce ≥1 drop AND ≥1 swap. If unanimous, flip the first non-drum
+    # record (drums must stay drop). If every kept-set track is a drum kit,
+    # ≥1 swap can't be enforced — leave the all-drop plan as-is.
+    actions = {a for _, a, _ in decisions}
+    kept_records = {r["name"]: r for r in kept}
+    if "drop" not in actions and decisions:
+        n0, _, _ = decisions[0]
+        decisions[0] = (n0, "drop", None)
+    elif "swap" not in actions and decisions:
+        for i, (n, a, p) in enumerate(decisions):
+            if not kept_records[n]["is_drum"]:
+                decisions[i] = (n, "swap", None)
+                break
+
+    def _pick_swap_prog(orig: int) -> int:
+        # Avoid kept_programs (the no-survival constraint) AND avoid
+        # ``orig`` itself (a no-op swap).
+        forbidden = kept_programs | {orig}
+        for _ in range(64):
+            cand = rng.randint(0, 95)
+            if cand not in forbidden:
+                return cand
+        # Pathological: every program in [0, 95] forbidden — fall back to
+        # the first non-forbidden index.
+        for cand in range(96):
+            if cand not in forbidden:
+                return cand
+        return (orig + 1) % 128
+
+    # Resolve swap programs.
+    name_to_prog = {r["name"]: r["program"] for r in records}
+    decisions = [
+        (name, action,
+         _pick_swap_prog(name_to_prog[name]) if action == "swap" else None)
+        for name, action, _ in decisions
+    ]
+
+    # Add-back picks: ⌈K/2⌉ from removed_set.
+    #
+    # Drum add-backs need extra care: the Slakh sentinel program for drums
+    # is 128, which is out of the ``add_track`` schema's valid range
+    # (0-127). The FluidSynth renderer keys off ``track.is_drum`` rather
+    # than ``track.program`` for drum stems (it forces bank=128, program=0
+    # internally), so we can safely report ``program=0`` to the LLM and
+    # have the audio still render as drums.
+    n_add = (k + 1) // 2
+    add_pool = removed[:]
+    rng.shuffle(add_pool)
+    add_backs: list[tuple[str, int]] = []
+    for r in add_pool[:n_add]:
+        if r["is_drum"]:
+            # Drum routing is controlled by ``is_drum``; report the
+            # schema-valid placeholder.
+            add_backs.append((r["name"], 0))
+            continue
+        prog = r["program"]
+        if prog in kept_programs:
+            # Pick fresh program ∉ kept_programs.
+            for _ in range(64):
+                cand = rng.randint(0, 95)
+                if cand not in kept_programs:
+                    prog = cand
+                    break
+        add_backs.append((r["name"], prog))
+
+    return {
+        "removed_set": [r["name"] for r in removed],
+        "kept_set": [r["name"] for r in kept],
+        "kept_programs": kept_programs,
+        "decisions": decisions,
+        "add_backs": add_backs,
+    }
+
+
+def _remix_forced_calls(plan: dict) -> list[dict]:
+    """Render a remix plan into the concrete tool_calls the LLM must echo."""
+    calls: list[dict] = []
+    for name, action, new_prog in plan["decisions"]:
+        if action == "drop":
+            calls.append({"name": "remove_track",
+                          "arguments": {"track": name}})
+        else:
+            calls.append({"name": "change_instrument",
+                          "arguments": {"track": name, "to_program": int(new_prog)}})
+    for name, prog in plan["add_backs"]:
+        calls.append({"name": "add_track",
+                      "arguments": {"track_name": name, "program": int(prog)}})
+    return calls
+
+
+def _remix_description(forced: list[dict]) -> str:
+    """Build the human-readable PRIMARY MOVE description from forced_calls."""
+    drop_lines, swap_lines, add_lines = [], [], []
+    for c in forced:
+        a = c["arguments"]
+        if c["name"] == "remove_track":
+            drop_lines.append(f"  - remove_track {{track: '{a['track']}'}}")
+        elif c["name"] == "change_instrument":
+            swap_lines.append(
+                f"  - change_instrument {{track: '{a['track']}', "
+                f"to_program: {a['to_program']}}}"
+            )
+        elif c["name"] == "add_track":
+            add_lines.append(
+                f"  - add_track {{track_name: '{a['track_name']}', "
+                f"program: {a['program']}}}"
+            )
+    forced_block = "\n".join(drop_lines + swap_lines + add_lines)
+    return (
+        "The main move is to REMIX the mixture: every track currently "
+        "in the input mix is either dropped or re-voiced (so none of "
+        "them survive as-is), and a few withheld tracks are introduced "
+        "from the 'available_to_add' pool. You MUST emit each of the "
+        "tool_calls below verbatim (in any order, alongside any "
+        "additional apply_fx calls you choose to make the variant "
+        "cohere). Required calls:\n"
+        f"{forced_block}\n"
+        "Your motivation should describe the remix concept in the "
+        "role's voice — what the variant emphasises, the new texture, "
+        "the new energy."
+    )
+
+
+def _frozen_plan(plan: dict) -> tuple:
+    """Convert a remix plan dict to the immutable representation stored on
+    ``IntentCommitment.plan``."""
+    return (
+        ("removed_set", tuple(plan["removed_set"])),
+        ("kept_set", tuple(plan["kept_set"])),
+        ("kept_programs", frozenset(plan["kept_programs"])),
+        ("decisions", tuple(plan["decisions"])),
+        ("add_backs", tuple(plan["add_backs"])),
+    )
+
+
+def thaw_plan(plan) -> dict:
+    """Restore a remix plan dict from its frozen tuple-of-pairs form, or
+    pass through if already a dict. Used by ``generate_one`` when
+    rebuilding the spec from a previously-stashed plan."""
+    if isinstance(plan, dict):
+        return dict(plan)
+    return {k: v for k, v in plan}
+
+
+def make_remix_intent(plan) -> IntentCommitment:
+    """Materialize a fully-populated ``IntentCommitment`` from a remix plan.
+
+    Accepts either a fresh plan dict (from ``_plan_remix``) or the frozen
+    tuple-of-pairs that ``IntentCommitment.plan`` carries between stages.
+    Used by ``sample_primary_intent`` (first call) and by ``generate_one``
+    (when rebuilding the prompt against post-withhold metadata, where
+    re-sampling would discard the original plan).
+    """
+    plan_dict = thaw_plan(plan)
+    forced = _remix_forced_calls(plan_dict)
+    return IntentCommitment(
+        intent="remix",
+        primary_tool=_INTENT_TOOL["remix"],
+        target_track=None, target_program=None,
+        description=_remix_description(forced),
+        forced_calls=tuple(forced),
+        plan=_frozen_plan(plan_dict),
+    )
+
+
 def sample_primary_intent(
     track_metadata: str,
     *,
@@ -688,14 +945,6 @@ def sample_primary_intent(
             f"of '{target_track}' using layer_instrument with additional_program "
             f"{target_program} at mix_ratio 0.4-0.7. Your motivation should "
             f"describe the layered texture."
-        )
-
-    elif intent == "performance_velocity":
-        target_track = _pick_any_track(track_metadata, rng)
-        description = (
-            f"The main move is change_velocity on '{target_track}' with a "
-            f"scale_factor in [0.6, 1.4] (avoid the near-1.0 zone). Your "
-            f"motivation should describe a dynamics change on '{target_track}'."
         )
 
     elif intent == "performance_timing":
@@ -757,6 +1006,32 @@ def sample_primary_intent(
             f"instrument (GM program {target_program}) using mute_and_replace. "
             f"Your motivation should describe the re-voicing of '{target_track}'."
         )
+
+    elif intent == "extract_track":
+        # Pick any track (drums OK). The pipeline performs the extraction
+        # deterministically; the LLM gets a tool-free prompt and emits
+        # motivation only.
+        target_track = _pick_any_track(track_metadata, rng)
+        description = (
+            f"The producer is extracting '{target_track}' from the full mix "
+            f"and presenting it in isolation. Your motivation should describe "
+            f"WHY soloing '{target_track}' is useful — what the listener gains "
+            f"by hearing this stem alone (its line, groove, timbre, role in "
+            f"the arrangement). Do NOT propose any production changes; this "
+            f"turn is purely about isolating the existing track."
+        )
+
+    elif intent == "remix":
+        plan = _plan_remix(track_metadata, rng)
+        if plan is None:
+            # Mixture too small for a meaningful remix — fall back so the
+            # entry is still useful.
+            return IntentCommitment(
+                intent="effects", primary_tool="apply_fx",
+                target_track=None, target_program=None,
+                description=_INTENT_TOOL["effects"],
+            )
+        return make_remix_intent(plan)
 
     if target_track is None and tracks and intent != "effects" and intent != "arrangement_add":
         # Fallback — couldn't find a target; degrade to effects.
@@ -954,14 +1229,32 @@ def build_spec(
         tool_count_range = (tool_count, tool_count)
     lo, hi = tool_count_range
     chosen_count = rng.randint(lo, hi)
+    # Forced calls (remix) take priority over the sampled count: the LLM
+    # must echo every one before any free apply_fx, and a 4-7 sample range
+    # can otherwise be smaller than the forced-call list.
+    n_forced = len(intent.forced_calls)
+    if n_forced > chosen_count:
+        chosen_count = n_forced + 1   # +1 → at least one free apply_fx
 
-    base_system = build_hermes_system_prompt(track_metadata)
-    system = (
-        f"{base_system}\n"
-        f"{_HARD_RULES}\n"
-        f"{_EFFECT_COOKBOOK}\n"
-        f"{_PRODUCTION_PRINCIPLES}\n"
-    )
+    motivation_only = intent.intent in MOTIVATION_ONLY_INTENTS
+    if motivation_only:
+        # Tool-free system prompt — the pipeline performs the operation
+        # deterministically. No <tools> block, no cookbook (the cookbook
+        # only matters for tool parameter choices).
+        from procraft_data.tools.schemas import build_motivation_only_system_prompt
+        base_system = build_motivation_only_system_prompt(track_metadata)
+        system = (
+            f"{base_system}\n"
+            f"{_HARD_RULES}\n"
+        )
+    else:
+        base_system = build_hermes_system_prompt(track_metadata)
+        system = (
+            f"{base_system}\n"
+            f"{_HARD_RULES}\n"
+            f"{_EFFECT_COOKBOOK}\n"
+            f"{_PRODUCTION_PRINCIPLES}\n"
+        )
 
     # Natural-name translation table — inject explicitly so the model has a
     # pre-approved phrasing for every identifier in the metadata. This is
@@ -989,7 +1282,7 @@ def build_spec(
         )
 
     example_block = "\n".join(f'  - "{s}"' for s in role_obj.example_sentences)
-    user = (
+    user_head = (
         f"{natural_block}"
         f"You are writing AS: {role_obj.name}\n"
         f"Their voice: {role_obj.voice}\n"
@@ -999,43 +1292,86 @@ def build_spec(
         f"Phrasing style for this turn: {level.name} — {level.description}\n"
         f"Concrete hook to anchor the motivation: \"{hook_str}\"\n"
         f"\n"
-        f"PRIMARY MOVE (this MUST happen in the tool_calls):\n  {intent.description}\n"
+        f"PRIMARY MOVE:\n  {intent.description}\n"
         f"\n"
-        f"Think inside <think>...</think> about what is genuinely weak or "
-        f"underused in THIS mixture for that role's concern, referencing ONLY "
-        f"tracks that appear in the Mixture metadata. Then, outside the think "
-        f"block, write exactly ONE line beginning with 'Production motivation: ' "
-        f"followed by a natural sentence that:\n"
-        f"  (a) sounds like it was written by {role_obj.name} — adopt their voice;\n"
-        f"  (b) uses the {level.name} phrasing style above;\n"
-        f"  (c) references or clearly evokes the hook \"{hook_str}\";\n"
-        f"  (d) describes the PRIMARY MOVE above in the role's natural language"
-        + (f" — the sentence MUST name '{intent.target_track}' explicitly"
-           if intent.target_track else "")
-        + (f" and describe the outcome of reaching GM program {intent.target_program} "
-           "(even if the role's voice would not say 'program N' literally — "
-           "paraphrase into what that instrument SOUNDS like)."
-           if intent.target_program is not None else ".")
-        + "\n"
-        f"\n"
-        f"Finally emit EXACTLY {chosen_count} tool_call block(s):\n"
-        f"  - AT LEAST ONE call MUST be the primary-move tool ({intent.primary_tool})\n"
-        f"    targeting the committed track where applicable.\n"
-        f"  - The remaining {max(0, chosen_count - 1)} call(s) are secondary — "
-        f"free to mix categories (instrument, effects, performance, arrangement) "
-        f"as long as they support the primary move.\n"
-        f"  - Use secondary calls to BE BOLD: chain aggressive FX on the "
-        f"primary target, stack a cross-category instrument swap on a "
-        f"second track, or stack a second arrangement move (e.g. if primary "
-        f"is remove, also swap another redundant track). The goal is a "
-        f"clearly audible overall difference.\n"
-        f"  - Every call: <tool_call>{{\"name\": ..., \"arguments\": ...}}</tool_call>\n"
-        f"    wrapped in literal tags, JSON with exactly two keys, UNIQUE.\n"
-        f"  - In every call's ``track`` argument, use the EXACT identifier "
-        f"from the Mixture metadata (e.g. `guitar_1`) — never the quoted "
-        f"program name.\n"
-        f"After the {chosen_count}th </tool_call>, stop generating."
     )
+
+    if motivation_only:
+        user = (
+            user_head
+            + f"Think inside <think>...</think> about WHY the producer is "
+              f"making this move, referencing ONLY tracks that appear in the "
+              f"Mixture metadata. Then, outside the think block, write "
+              f"exactly ONE line beginning with 'Production motivation: ' "
+              f"followed by a natural sentence that:\n"
+              f"  (a) sounds like it was written by {role_obj.name} — adopt their voice;\n"
+              f"  (b) uses the {level.name} phrasing style above;\n"
+              f"  (c) references or clearly evokes the hook \"{hook_str}\";\n"
+              f"  (d) describes the PRIMARY MOVE above in the role's natural language"
+            + (f" — the sentence MUST name '{intent.target_track}' explicitly."
+               if intent.target_track else ".")
+            + "\n\n"
+              f"Do NOT emit any <tool_call> blocks. After the closing "
+              f"</think> and the 'Production motivation:' line, stop "
+              f"generating."
+        )
+    else:
+        user = (
+            user_head
+            + f"Think inside <think>...</think> about what is genuinely weak "
+              f"or underused in THIS mixture for that role's concern, "
+              f"referencing ONLY tracks that appear in the Mixture metadata. "
+              f"Then, outside the think block, write exactly ONE line "
+              f"beginning with 'Production motivation: ' followed by a "
+              f"natural sentence that:\n"
+              f"  (a) sounds like it was written by {role_obj.name} — adopt their voice;\n"
+              f"  (b) uses the {level.name} phrasing style above;\n"
+              f"  (c) references or clearly evokes the hook \"{hook_str}\";\n"
+              f"  (d) describes the PRIMARY MOVE above in the role's natural language"
+            + (f" — the sentence MUST name '{intent.target_track}' explicitly"
+               if intent.target_track else "")
+            + (f" and describe the outcome of reaching GM program {intent.target_program} "
+               "(even if the role's voice would not say 'program N' literally — "
+               "paraphrase into what that instrument SOUNDS like)."
+               if intent.target_program is not None else ".")
+            + "\n\n"
+              f"Finally emit EXACTLY {chosen_count} tool_call block(s):\n"
+        )
+        if intent.forced_calls:
+            n_forced = len(intent.forced_calls)
+            n_extra = max(0, chosen_count - n_forced)
+            user += (
+                f"  - The first {n_forced} call(s) MUST be the forced "
+                f"tool_calls listed in the PRIMARY MOVE above (each one "
+                f"emitted verbatim).\n"
+                f"  - The remaining {n_extra} call(s) are free apply_fx "
+                f"calls used to glue the new variant together (any track, "
+                f"any effect; bias toward audible parameter values).\n"
+            )
+        else:
+            user += (
+                f"  - AT LEAST ONE call MUST be the primary-move tool "
+                f"({intent.primary_tool}) targeting the committed track "
+                f"where applicable.\n"
+                f"  - The remaining {max(0, chosen_count - 1)} call(s) are "
+                f"secondary — free to mix categories (instrument, effects, "
+                f"performance, arrangement) as long as they support the "
+                f"primary move.\n"
+                f"  - Use secondary calls to BE BOLD: chain aggressive FX "
+                f"on the primary target, stack a cross-category instrument "
+                f"swap on a second track, or stack a second arrangement "
+                f"move (e.g. if primary is remove, also swap another "
+                f"redundant track). The goal is a clearly audible overall "
+                f"difference.\n"
+            )
+        user += (
+            f"  - Every call: <tool_call>{{\"name\": ..., \"arguments\": ...}}</tool_call>\n"
+            f"    wrapped in literal tags, JSON with exactly two keys, UNIQUE.\n"
+            f"  - In every call's ``track`` argument, use the EXACT identifier "
+            f"from the Mixture metadata (e.g. `guitar_1`) — never the quoted "
+            f"program name.\n"
+            f"After the {chosen_count}th </tool_call>, stop generating."
+        )
 
     return PromptSpec(
         system=system, user=user,
@@ -1049,6 +1385,9 @@ def build_spec(
         category_focus="free",
         temperature=temperature,
         tool_count_hint=tool_count_range,
+        forced_calls=[dict(c) for c in intent.forced_calls],
+        plan={k: v for k, v in intent.plan},
+        motivation_only=motivation_only,
     )
 
 
