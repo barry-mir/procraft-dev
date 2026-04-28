@@ -347,7 +347,22 @@ targets are NOT honored — simplification).
 
 ---
 
-## 4. Open items / next
+## 4. Datasets on disk
+
+- **BabySlakh (16 kHz)** — 20 multitrack songs at
+  `/nas/pro-craft/raw/slakh2100/babyslakh_16k/`. Per-stem MIDI + audio.
+  Used by ``procraft_data/sources/slakh.py`` and the demo.
+- **Lakh MIDI (LMD-full)** — 178,561 raw multi-instrument MIDIs at
+  `/nas/pro-craft/raw/lakh_midi/lmd_full/<first-char>/<md5>.mid`,
+  deduplicated to **20,797** canonical tracks via
+  ``CAugBERT_0.99_with_CLaMP_0.99.json`` (Jeong et al.,
+  github.com/jech2/LMD_Deduplication). The list of canonical paths
+  lives at ``/nas/pro-craft/raw/lakh_midi/kept_paths.txt``. No loader
+  yet — Lakh files are single multi-instrument MIDIs (not per-stem
+  like Slakh) and need a thin splitter before they can feed the
+  pipeline.
+
+## 5. Open items / next
 
 - Implement DAC tokenization + the factorized codec model (ProCraft-Model,
   proposal §4). Pipeline for this doesn't exist yet; data side is where
@@ -357,10 +372,13 @@ targets are NOT honored — simplification).
 - FAD-based quality filtering (proposal §3.2 Step 4). Not a blocker.
 - Scale from BabySlakh (20 tracks) to full Slakh2100 (2,100 tracks) once
   motivation quality review passes.
+- Lakh loader — split each LMD-full MIDI by ``pretty_midi.Instrument``
+  into a `MixtureState`-shaped record so the existing pipeline can
+  source from Lakh in addition to Slakh.
 
 ---
 
-## 5. File map
+## 6. File map
 
 | File | Role |
 |---|---|
