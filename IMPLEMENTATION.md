@@ -388,7 +388,97 @@ need Tier 2 (speculative decoding via a draft model) or Tier 3
 For the full Lakh sweep at 94,821 clean tracks × 13.6 s/entry, ETA is
 ~358 hours ≈ **~15 days** continuous on the 3090.
 
-### 3.14 Shared peak-normalize at output
+### 3.14 Lakh full-corpus pipeline (filtering + rendering)
+End-to-end flow used to render the 94,821-track production dataset
+under ``/nas/pro-craft/dataset/lakh/``.
+
+**Stage 0 — raw download.** ``lmd_full.tar.gz`` (1.7 GB) extracted to
+``/nas/pro-craft/raw/lakh_midi/lmd_full/<first>/<md5>.mid`` →
+**178,561 raw MIDIs**.
+
+**Stage 1 — semantic dedup.** Apply Jeong et al. 2025
+(arxiv 2509.16662) ``CAugBERT_0.99_with_CLaMP_0.99.json`` filter:
+``{canonical_md5: [duplicate_md5s]}``. Drop the 38,134 unique
+duplicate-md5 values; keep canonical keys (20,797) + tracks not
+mentioned at all (119,630). Result: **140,427 dedup-kept paths** →
+``/nas/pro-craft/raw/lakh_midi/kept_paths.txt``.
+
+**Stage 2 — rule-based sanity filter.**
+``scripts/lakh_sanity_filter.py`` parses each MIDI and drops it on
+any of:
+
+  | rule | threshold | observed skip count |
+  |---|---|---|
+  | parses cleanly with pretty_midi | — | 3,878 |
+  | total duration | ≥ 30 s | 11,253 |
+  | instruments with ≥ 16 notes | ≥ 3 | 18,069 |
+  | not all melodic stems on GM 0 (unset-program default) | — | 4,413 |
+  | drum-flagged stems | ≤ 2 | 7,993 |
+
+Output: **94,821 clean paths** (67.5% pass) →
+``/nas/pro-craft/raw/lakh_midi/kept_paths_clean.txt`` plus a
+per-track skip-reason audit file.
+
+**Stage 3 — Lakh-aware loader.**
+``procraft_data/sources/lakh.py`` parses each clean MIDI once and
+splits it by ``pretty_midi.Instrument`` into per-stem cache files at
+``/nas/pro-craft/cache/lakh_stems/<first>/<md5>/MIDI/<sid>.mid``.
+The returned ``TrackMeta`` is structurally identical to Slakh's
+(``track_id`` = md5, per-stem ``StemMeta`` with derived
+``inst_class`` from a GM-family table) so the rest of the pipeline
+consumes Lakh tracks through the existing interface unchanged.
+
+**Stage 4 — generation.** ``scripts/generate_lakh.py`` reads the
+clean list, samples one random ``PRIMARY_INTENT`` per track, builds
+a ``PromptSpec``, and dispatches generation across N workers (one
+``FluidSynthRenderer`` per thread; libfluidsynth is not thread-safe
+after sfload). Each entry runs the full ``generate_one`` pipeline
+(prompt → vLLM → tool_call execution → write WAV/MIDI/JSON).
+Idempotent — skips tracks whose ``entry.json`` already exists, so
+re-running picks up where it left off.
+
+  Output layout (one folder per track):
+
+      /nas/pro-craft/dataset/lakh/<first>/<md5>/
+          entry.json        # full DatasetEntry serialization
+          original.wav      # 48 kHz stereo, 30 s window
+          modified.wav      # post-tool-execution mix
+          original.mid      # full multitrack MIDI (matches original.wav)
+          modified.mid      # post-tool-execution MIDI (matches modified.wav)
+
+  ``entry.json`` carries everything: text fields (motivation, role,
+  abstraction_level, hook, raw_response, think), the full
+  ``tool_calls`` list (extract_track entries get a synthetic
+  ``[{"name": "extract_track", "arguments": {"track": <target>}}]`` so
+  the format is uniform), pre/post instrument lists, per-stage
+  timing (``llm_sec``, ``render_sec``, ``executor_sec``,
+  ``total_sec``), retry history, and audio RMS bookkeeping.
+
+**Stage 5 — failure scan + auto-rerender.** After the main sweep
+completes:
+
+  1. ``scripts/scan_dataset.py`` walks the dataset and validates
+     each ``entry.json``. Failure conditions: missing
+     entry.json/audio/MIDI; empty motivation; motivation > 800 chars
+     OR matching the chain-of-thought leak patterns in
+     ``_PROMPT_LEAK_PATTERNS``; ``executed_ok = false``;
+     ``attempt_count > max_retries``; original or modified audio
+     RMS < 1e-5 (silent). Writes ``lakh.failures.txt``
+     (``<md5>\\t<reason>`` per line) + a reason histogram summary.
+  2. ``scripts/regenerate_failures.py`` reads that list, wipes each
+     failed entry directory, and re-dispatches through
+     ``scripts/generate_lakh._build_one`` with a different seed.
+     Same vLLM client + worker shape.
+  3. Iterate scan ↔ regenerate until ``failures.txt`` is empty.
+
+**Stage 6 — vLLM serving config.** ``scripts/serve_qwen3.sh`` is
+launched with ``--max-num-seqs 16`` (raised from the demo's 6) so
+the 8-worker generator has continuous-batching headroom. See §3.13
+for the full speed-sweep table; the chosen config of ``workers=8``
++ ``max-num-seqs=16`` gives 13.6 s/entry wall (1.6× over baseline)
+and projects to ~17 days for the full corpus on the 3090.
+
+### 3.15 Shared peak-normalize at output
 `_shared_peak_normalize(original, modified, target=0.95)` computes one
 scale factor from `max(|original|, |modified|)`; applies to both.
 Preserves the relative loudness delta between the pair while preventing
