@@ -24,7 +24,7 @@ from procraft_data.pipeline.trace_client import VLLMClient
 from procraft_data.rendering.fluidsynth_render import find_default_soundfont
 
 # Import the generator's per-task function so we share the same code path.
-from scripts.generate_lakh import _build_one, _entry_dir_for
+from scripts.generate_lakh import _build_one, _entry_dir_for, _discover_soundfonts
 
 
 LAKH_RAW_ROOT = Path("/nas/pro-craft/raw/lakh_midi/lmd_full")
@@ -52,9 +52,12 @@ def main():
     ap.add_argument("--report-every", type=int, default=20)
     args = ap.parse_args()
 
-    sf_path = find_default_soundfont()
-    if sf_path is None:
-        raise SystemExit("No soundfont.")
+    soundfonts = _discover_soundfonts()
+    if not soundfonts:
+        sf_default = find_default_soundfont()
+        if sf_default is None:
+            raise SystemExit("No soundfonts found.")
+        soundfonts = [sf_default]
 
     client = VLLMClient(base_url=args.server, model=args.model)
     client.wait_ready(max_wait_sec=30)
@@ -94,7 +97,7 @@ def main():
 
     with ThreadPoolExecutor(max_workers=args.workers) as ex:
         futures = [
-            ex.submit(_build_one, p, s, client, sf_path,
+            ex.submit(_build_one, p, s, client, soundfonts,
                       paths.CLIP_SECONDS, args.max_retries, tool_count_range)
             for p, s in zip(paths_to_run, seeds)
         ]

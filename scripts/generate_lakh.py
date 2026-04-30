@@ -40,17 +40,42 @@ from procraft_data.sources.slakh import build_mixture_state, describe_mixture
 
 
 DATASET_ROOT = Path("/nas/pro-craft/dataset/lakh")
+SOUNDFONT_DIR = Path("/nas/pro-craft/soundfonts")
 
 
-# Per-thread renderer (libfluidsynth is not thread-safe after sfload).
+def _discover_soundfonts() -> list[Path]:
+    """Return all loadable soundfonts in /nas/pro-craft/soundfonts/.
+
+    FluidSynth supports SF2 (and SF3 when built with libsndfile + Ogg/
+    Vorbis); we use the SF2 set we curated earlier (13 soundfonts at
+    last count). Symlinks resolve naturally.
+    """
+    if not SOUNDFONT_DIR.is_dir():
+        return []
+    out = sorted({p.resolve() for p in SOUNDFONT_DIR.iterdir()
+                  if p.suffix.lower() in (".sf2", ".sf3") and p.is_file()})
+    return [Path(p) for p in out]
+
+
+# Per-thread, per-soundfont renderer cache (libfluidsynth is not thread-
+# safe after sfload, so we keep one renderer per (thread, soundfont)).
+# Cache hit = cheap; cache miss = ~500 ms-2 s sfload depending on the SF
+# size. Per-entry random soundfont selection means each thread will
+# accumulate ~ len(soundfont_list) renderers over time, then keep
+# reusing them — amortized cost is small.
 _TLS = threading.local()
 
 
 def _get_renderer(sf_path: Path) -> FluidSynthRenderer:
-    r = getattr(_TLS, "renderer", None)
+    cache = getattr(_TLS, "renderers", None)
+    if cache is None:
+        cache = {}
+        _TLS.renderers = cache
+    key = str(sf_path)
+    r = cache.get(key)
     if r is None:
         r = FluidSynthRenderer(soundfont_path=sf_path)
-        _TLS.renderer = r
+        cache[key] = r
     return r
 
 
@@ -68,7 +93,7 @@ def _preview_metadata(track, duration: float) -> str:
 
 
 def _build_one(midi_path_str: str, seed: int, client: VLLMClient,
-               sf_path: Path, duration: float, max_retries: int,
+               soundfonts: list[Path], duration: float, max_retries: int,
                tool_count_range: tuple[int, int]) -> dict:
     rng = random.Random(seed)
     midi_path = Path(midi_path_str)
@@ -96,6 +121,12 @@ def _build_one(midi_path_str: str, seed: int, client: VLLMClient,
             tool_count_range=tool_count_range,
             seed=rng.randint(0, 2**31 - 1),
         )
+        # Per-entry random soundfont — picked from /nas/pro-craft/
+        # soundfonts/ so two entries from the same source MIDI sound
+        # different (this is the soundfont diversity augmentation
+        # mentioned in the proposal). Renderer cache is keyed by
+        # (thread, soundfont) so repeats are cheap.
+        sf_path = rng.choice(soundfonts)
         renderer = _get_renderer(sf_path)
         out_dir.mkdir(parents=True, exist_ok=True)
         entry = generate_one(
@@ -118,7 +149,9 @@ def _build_one(midi_path_str: str, seed: int, client: VLLMClient,
             if src.exists():
                 src.replace(out_dir / dst_name)
         # Patch the filename fields on the persisted entry.json so the
-        # paths there match what's actually on disk.
+        # paths there match what's actually on disk. Also record the
+        # soundfont used to render so the entry is reproducible (and
+        # downstream stratification by soundfont is possible).
         entry_json_path = out_dir / "entry.json"
         if entry_json_path.exists():
             blob = json.loads(entry_json_path.read_text())
@@ -126,6 +159,7 @@ def _build_one(midi_path_str: str, seed: int, client: VLLMClient,
             blob["modified_wav"] = "modified.wav"
             blob["original_midi"] = "original.mid"
             blob["modified_midi"] = "modified.mid"
+            blob["soundfont"] = str(sf_path)
             entry_json_path.write_text(json.dumps(blob, indent=2))
         return {
             "track_id": md5,
@@ -164,9 +198,18 @@ def main():
     ap.add_argument("--report-every", type=int, default=50)
     args = ap.parse_args()
 
-    sf_path = find_default_soundfont()
-    if sf_path is None:
-        raise SystemExit("No soundfont.")
+    soundfonts = _discover_soundfonts()
+    if not soundfonts:
+        # Fall back to the default-soundfont resolver so the script
+        # still works when /nas/pro-craft/soundfonts/ is empty.
+        sf_default = find_default_soundfont()
+        if sf_default is None:
+            raise SystemExit("No soundfonts found.")
+        soundfonts = [sf_default]
+    print(f"[lakh-gen] {len(soundfonts)} soundfonts available "
+          f"(per-entry random rotation)")
+    for sf in soundfonts:
+        print(f"  - {sf}")
 
     client = VLLMClient(base_url=args.server, model=args.model)
     client.wait_ready(max_wait_sec=30)
@@ -193,7 +236,7 @@ def main():
 
     with ThreadPoolExecutor(max_workers=args.workers) as ex:
         futures = [
-            ex.submit(_build_one, p, s, client, sf_path,
+            ex.submit(_build_one, p, s, client, soundfonts,
                       args.duration, args.max_retries, tool_count_range)
             for p, s in zip(paths_list, seeds)
         ]
