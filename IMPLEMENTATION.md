@@ -430,12 +430,18 @@ consumes Lakh tracks through the existing interface unchanged.
 
 **Stage 4 — generation.** ``scripts/generate_lakh.py`` reads the
 clean list, samples one random ``PRIMARY_INTENT`` per track, builds
-a ``PromptSpec``, and dispatches generation across N workers (one
-``FluidSynthRenderer`` per thread; libfluidsynth is not thread-safe
-after sfload). Each entry runs the full ``generate_one`` pipeline
-(prompt → vLLM → tool_call execution → write WAV/MIDI/JSON).
-Idempotent — skips tracks whose ``entry.json`` already exists, so
-re-running picks up where it left off.
+a ``PromptSpec``, picks a random soundfont from
+``/nas/pro-craft/soundfonts/`` (12 unique SF2s after symlink dedup),
+and dispatches generation across N workers. Each thread keeps a
+``{soundfont_path: FluidSynthRenderer}`` cache so the soundfont
+switch doesn't churn (libfluidsynth is not thread-safe after sfload;
+first-use sfload is ~0.5-2 s, subsequent uses hit the cache). Each
+entry runs the full ``generate_one`` pipeline (prompt → vLLM →
+tool_call execution → write WAV/MIDI/JSON) and the chosen soundfont
+path is patched onto the persisted entry.json (``soundfont`` field)
+for reproducibility / downstream stratification. Idempotent — skips
+tracks whose ``entry.json`` already exists, so re-running picks up
+where it left off.
 
   Output layout (one folder per track):
 
